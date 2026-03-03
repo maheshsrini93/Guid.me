@@ -1,0 +1,581 @@
+# =============================================================================
+# Guid.me — Illustration Guidelines
+# =============================================================================
+# These requirements govern how the AI pipeline generates assembly
+# illustrations. Each step gets one illustration; these rules ensure
+# visual consistency, clarity, and correct part representation.
+#
+# Origin key:
+#   F-xxx    = Adapted from aerospace figure/illustration standard
+#   NF-xxx   = Adapted from aerospace non-functional requirement
+#   EXISTING = Already implemented in codebase, now formalized
+#   NEW/DIY-xxx = New requirement specific to consumer assembly guides
+# =============================================================================
+
+version: "1.0"
+scope: "illustrations"
+updated_at: "2026-02-16"
+description: |
+  Visual standards for AI-generated assembly illustrations. Covers style,
+  part visualization, motion indicators, comparative views, and quality
+  consistency. All illustrations must follow these rules to ensure a
+  cohesive visual experience across the entire guide library.
+
+categories:
+  # ---------------------------------------------------------------------------
+  # 1. VISUAL STYLE
+  # ---------------------------------------------------------------------------
+  - name: "Visual Style"
+    description: |
+      Core visual identity for all generated illustrations. Ensures every
+      image feels like part of the same guide system regardless of which
+      AI model generated it.
+
+    requirements:
+      - id: "IL-001"
+        title: "Isometric technical style"
+        origin: "EXISTING"
+        priority: "must"
+        description: |
+          All assembly illustrations must use a consistent visual style:
+
+          - **Perspective**: Isometric (approximately 30-degree angle)
+          - **Line work**: Clean, precise line art with subtle shading
+          - **Palette**: Neutral/warm tones reflecting actual material colors
+            (light wood, white laminate, silver hardware)
+          - **Background**: Clean white — no gradients, patterns, or scenery
+          - **Shadows**: Subtle drop shadow to ground the object, no harsh shadows
+          - **Detail level**: Enough to identify parts, not photorealistic
+
+          The style should evoke professional technical documentation — clear,
+          clean, and instructional. Think IKEA manual quality with color.
+        applies_to:
+          - "pass3"
+          - "quality_check"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "error"
+        examples:
+          good:
+            - "Clean isometric view of a shelf unit with light wood tones, subtle shading, white background, clear line work"
+          bad:
+            - "Photorealistic render with dramatic lighting and a lifestyle background"
+            - "Flat 2D diagram with no depth or shading"
+
+      - id: "IL-002"
+        title: "Standardized dimensions"
+        origin: "F-2"
+        priority: "must"
+        description: |
+          All illustrations must be generated at a consistent size and
+          maintain consistent framing:
+
+          - **Resolution**: 1024 × 1024 pixels (square format)
+          - **Framing**: The assembled/in-progress furniture should fill
+            approximately 70-80% of the frame
+          - **Margins**: Consistent margins on all sides for part labels
+            and direction arrows
+          - **Crop consistency**: Same product should appear at the same
+            scale across all steps in the guide
+        applies_to:
+          - "pass3"
+          - "quality_check"
+        validation:
+          type: "automated_check"
+          check_function: "validateImageDimensions"
+          severity: "error"
+        examples:
+          good:
+            - "All 16 step illustrations are 1024x1024 with the bookcase at consistent scale"
+          bad:
+            - "Step 3 shows the bookcase filling the entire frame, step 4 shows it tiny in the corner"
+
+      - id: "IL-003"
+        title: "No text in illustrations"
+        origin: "F-18"
+        priority: "must"
+        description: |
+          Illustrations must not contain instructional text. The only
+          permitted text elements within an illustration are:
+
+          - **Quantities**: "×4" next to a group of identical fasteners
+          - **Directional labels**: "FRONT", "BACK", "TOP", "BOTTOM"
+          - **Action indicators**: "CLICK" for snap-fit connections
+          - **Part labels**: "A", "B", "C" (matching the parts list)
+
+          All other instructional content belongs in the step text, not
+          the image. This ensures illustrations work across languages.
+        applies_to:
+          - "pass3"
+          - "quality_check"
+        validation:
+          type: "automated_check"
+          check_function: "validateNoTextInImage"
+          severity: "error"
+        examples:
+          good:
+            - "Illustration shows 4 screws with '×4' label, part letter 'A' near the panel, and 'FRONT' indicating orientation"
+          bad:
+            - "Illustration contains 'Insert the screw into the hole' as text overlay"
+            - "Illustration has full step instructions embedded in the image"
+
+      - id: "IL-004"
+        title: "Image quality standards"
+        origin: "F-21"
+        priority: "must"
+        description: |
+          Generated illustrations must meet minimum quality thresholds:
+
+          - **No blur**: All edges must be sharp and well-defined
+          - **No grain/noise**: Clean rendering without artifacts
+          - **No stretching/distortion**: Proportions must be accurate
+          - **No hallucinated parts**: Only parts that exist in the product
+          - **No merged geometry**: Distinct parts must be visually separate
+
+          Illustrations failing quality checks should be regenerated (up to
+          3 attempts) before flagging for manual review.
+        applies_to:
+          - "pass3"
+          - "quality_check"
+        validation:
+          type: "automated_check"
+          check_function: "validateImageQuality"
+          severity: "error"
+        examples:
+          good:
+            - "Sharp, clean illustration with accurate proportions and distinct part boundaries"
+          bad:
+            - "Blurry illustration where screw holes merge with panel edges"
+            - "Distorted proportions where a shelf is wider than the frame it sits in"
+
+      - id: "IL-005"
+        title: "Color consistency"
+        origin: "NF-4"
+        priority: "must"
+        description: |
+          The same part must appear in the same color across all illustrations
+          in a guide:
+
+          - Wood panels: consistent wood tone (light birch, white laminate, etc.)
+          - Metal hardware: consistent silver/gray
+          - Plastic components: consistent black or white
+          - Backing boards: consistent darker tone to distinguish from shelves
+
+          The AI should establish a color palette for each product in the
+          first illustration and maintain it throughout. Color mapping should
+          be included in the illustration prompt for every step.
+        applies_to:
+          - "pass3"
+          - "quality_check"
+        validation:
+          type: "automated_check"
+          check_function: "validateColorConsistency"
+          severity: "warning"
+        examples:
+          good:
+            - "Side panels are consistently light birch across all 12 steps"
+          bad:
+            - "Side panel appears light birch in step 2 but dark walnut in step 7"
+
+  # ---------------------------------------------------------------------------
+  # 2. PART VISUALIZATION
+  # ---------------------------------------------------------------------------
+  - name: "Part Visualization"
+    description: |
+      How individual parts are represented, labeled, and distinguished
+      within illustrations — especially in complex multi-part steps.
+
+    requirements:
+      - id: "IL-006"
+        title: "Active/inactive part highlighting"
+        origin: "F-11"
+        priority: "must"
+        description: |
+          Clearly distinguish between parts being acted on in the current
+          step and parts that are already assembled:
+
+          - **Active parts** (current step): Full color, sharp edges,
+            bright/saturated
+          - **Inactive parts** (already assembled): Muted/desaturated or
+            semi-transparent, lighter weight lines
+          - **New parts being added**: May have a subtle highlight or
+            glow effect to draw attention
+
+          This visual hierarchy helps users instantly identify what they
+          need to focus on in each step.
+        applies_to:
+          - "pass3"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "error"
+        examples:
+          good:
+            - "Step 8 shows the shelf (active) in full color being inserted, while the already-assembled frame is rendered in muted gray"
+          bad:
+            - "All parts rendered at the same color intensity — user can't tell which part is being added"
+
+      - id: "IL-007"
+        title: "Alphabetical part labels"
+        origin: "F-5"
+        priority: "must"
+        description: |
+          Label parts using sequential uppercase letters matching the
+          parts list:
+
+          - Sequence: A, B, C, D, E, F, G, H, J, K, L, M, N, P...
+          - **Skip I and O** to avoid confusion with numbers 1 and 0
+          - Labels should be placed near the part with a thin leader line
+            if needed
+          - Labels must be legible (minimum apparent size, high contrast)
+          - Use consistent label placement (prefer upper-right of part)
+        applies_to:
+          - "pass3"
+          - "quality_check"
+        validation:
+          type: "automated_check"
+          check_function: "validatePartLabels"
+          severity: "error"
+        examples:
+          good:
+            - "Side panel labeled 'B' with a small leader line pointing to the part"
+          bad:
+            - "Parts labeled with numbers instead of letters"
+            - "Label 'I' used (confusable with '1')"
+            - "Labels too small to read or overlapping other elements"
+
+      - id: "IL-008"
+        title: "Exploded views for clustered parts"
+        origin: "F-17"
+        priority: "should"
+        description: |
+          When multiple parts connect in a small area and would overlap
+          or be hard to distinguish in the illustration:
+
+          - Use an **exploded view** showing parts separated along their
+            insertion axis
+          - Show dashed lines connecting each part to its destination
+          - Maintain relative positioning so the spatial relationship is clear
+          - Common scenarios: cam lock assemblies, corner joints, hinge
+            mechanisms
+
+          Exploded views should be used when 3+ parts connect within a
+          ~10cm area on the actual product.
+        applies_to:
+          - "pass3"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "warning"
+        examples:
+          good:
+            - "Exploded view showing dowel, cam lock bolt, and cam lock disc separated along insertion axis with dashed guide lines"
+          bad:
+            - "All three fasteners shown overlapping in the same spot — impossible to tell what goes where"
+
+      - id: "IL-009"
+        title: "Detail callouts/enlargements"
+        origin: "F-16"
+        priority: "should"
+        description: |
+          For small hardware or intricate connections that are hard to see
+          in the full-product view, include a zoomed detail callout:
+
+          - **Zoom circle**: A circular inset showing the detail area at 2-3×
+            magnification
+          - **Connected by leader line**: Thin line from the zoom circle to
+            the area on the main illustration
+          - **Common uses**: Cam lock insertion, dowel alignment, screw head
+            depth, hinge adjustment screws
+
+          The main illustration stays at normal scale; the detail callout
+          provides clarity for the specific operation.
+        applies_to:
+          - "pass3"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "warning"
+        examples:
+          good:
+            - "Main view shows full shelf assembly; zoom circle shows cam lock being turned with arrow indicating clockwise rotation"
+          bad:
+            - "Entire illustration is zoomed in so tight you can't see where on the furniture the action occurs"
+
+  # ---------------------------------------------------------------------------
+  # 3. MOTION & DIRECTION
+  # ---------------------------------------------------------------------------
+  - name: "Motion & Direction"
+    description: |
+      Visual indicators for movement, rotation, and measurement within
+      illustrations. These replace text descriptions of physical actions.
+
+    requirements:
+      - id: "IL-010"
+        title: "Direction arrows"
+        origin: "F-8"
+        priority: "must"
+        description: |
+          Use clear directional arrows to show movement:
+
+          - **Arrow style**: Solid, bold arrows with clear arrowheads
+          - **Color**: Distinct from the product (blue or green recommended)
+          - **Direction types**:
+            - Push/insert: Straight arrow pointing into the destination
+            - Slide: Arrow along the sliding path
+            - Lower/place: Downward curved arrow
+            - Lift: Upward arrow
+          - **Length**: Arrow should be proportional to the movement distance
+          - **Placement**: Arrows start from the part being moved and point
+            toward its destination
+        applies_to:
+          - "pass3"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "error"
+        examples:
+          good:
+            - "Blue arrow showing shelf being slid into position from left to right along the shelf pins"
+          bad:
+            - "No directional indication — user can't tell which way the part moves"
+            - "Tiny, thin arrow that's barely visible against the product"
+
+      - id: "IL-011"
+        title: "Rotation arrows"
+        origin: "F-9"
+        priority: "must"
+        description: |
+          For rotation actions (tightening screws, turning cam locks), use
+          curved arrows:
+
+          - **Clockwise**: Curved arrow showing clockwise rotation (tightening)
+          - **Counter-clockwise**: Curved arrow showing CCW rotation (loosening)
+          - **Arrow style**: Bold curved arrow with clear direction indicator
+          - **Placement**: Around the rotating element (screw head, cam lock disc)
+          - **Degree indication**: Optional — "¼ turn" or "90°" when specific
+            rotation amount matters
+        applies_to:
+          - "pass3"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "error"
+        examples:
+          good:
+            - "Curved clockwise arrow around cam lock disc, labeled '¼ turn'"
+          bad:
+            - "Straight arrow pointing at a screw with no rotation indication"
+
+      - id: "IL-012"
+        title: "Measurement notation"
+        origin: "F-10"
+        priority: "should"
+        description: |
+          When measurements appear in illustrations (spacing, alignment
+          distances):
+
+          - **Format**: Value + space + unit: "30 mm", "15 cm"
+          - **Dimension lines**: Thin lines with arrowheads at both ends
+          - **Consistent arrowhead style**: Small, filled triangles
+          - **Placement**: Outside the product outline when possible
+          - **Use sparingly**: Only when exact measurement is critical for
+            the step (e.g., shelf pin position, bracket spacing)
+        applies_to:
+          - "pass3"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "info"
+        examples:
+          good:
+            - "Dimension line showing '30 mm' gap between bracket and panel edge, with arrowheads at both ends"
+          bad:
+            - "Measurement written as '30mm' (no space) or '3cm' (inconsistent unit)"
+
+  # ---------------------------------------------------------------------------
+  # 4. COMPARATIVE & REFERENCE
+  # ---------------------------------------------------------------------------
+  - name: "Comparative & Reference"
+    description: |
+      Illustrations that show comparisons (correct vs incorrect), reference
+      images for checkpoints, and special indicators.
+
+    requirements:
+      - id: "IL-013"
+        title: "OK/NOK (Do/Don't) illustrations"
+        origin: "F-20"
+        priority: "should"
+        description: |
+          For steps where a common mistake exists, show side-by-side correct
+          and incorrect versions:
+
+          - **Left side**: Correct assembly with green checkmark (✓)
+          - **Right side**: Incorrect assembly with red X overlay
+          - **Visual difference**: The mistake should be clearly visible
+            (wrong orientation, missing part, incorrect alignment)
+          - **Use sparingly**: Only for genuinely common errors, not every step
+
+          Maximum 2-3 do/don't illustrations per guide.
+        applies_to:
+          - "pass3"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "warning"
+        examples:
+          good:
+            - "Side-by-side: Left shows shelf pin correctly seated (✓), right shows shelf pin only half-inserted (✗)"
+          bad:
+            - "Every step has a do/don't pair (overkill — dilutes the message)"
+
+      - id: "IL-014"
+        title: "Checkpoint reference images"
+        origin: "NEW/DIY-007"
+        priority: "should"
+        description: |
+          At phase transitions (every 4-8 steps), generate a checkpoint
+          illustration showing the cumulative assembly state:
+
+          - Shows the complete assembly as it should look at this point
+          - All previously assembled parts in full color (no muting)
+          - Viewed from the standard isometric angle
+          - No action arrows or movement indicators — this is a static
+            reference image
+          - Labeled: "Checkpoint" or "Your progress"
+
+          These pair with work instruction requirement WI-038.
+        applies_to:
+          - "pass3"
+          - "viewer"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "warning"
+        examples:
+          good:
+            - "Checkpoint image after Phase 1 showing fully assembled frame from standard angle — all parts in full color, no arrows"
+          bad:
+            - "No checkpoint images in a 20-step guide"
+
+      - id: "IL-015"
+        title: "Two-person indicator"
+        origin: "NEW/DIY-002"
+        priority: "must"
+        description: |
+          Steps flagged as requiring two people (see WI-018) must include
+          a visual two-person indicator in the illustration:
+
+          - **Icon**: Two simplified human figures/silhouettes
+          - **Placement**: Upper corner of the illustration, consistent position
+          - **Always visible**: Not obscured by parts or arrows
+          - **Optional**: Show second person's hand positions on the product
+            to indicate where they should hold/support
+        applies_to:
+          - "pass3"
+          - "viewer"
+        validation:
+          type: "automated_check"
+          check_function: "validateTwoPersonIndicator"
+          severity: "error"
+        examples:
+          good:
+            - "Two-person icon in upper-right corner; illustration shows where both people grip the frame during lifting"
+          bad:
+            - "Step requires two people per WI-018 but illustration shows only one person's perspective"
+
+  # ---------------------------------------------------------------------------
+  # 5. QUALITY & CONSISTENCY
+  # ---------------------------------------------------------------------------
+  - name: "Quality & Consistency"
+    description: |
+      Cross-cutting quality requirements that ensure illustrations work as
+      a cohesive set within each guide.
+
+    requirements:
+      - id: "IL-016"
+        title: "One illustration per step"
+        origin: "CS-033"
+        priority: "must"
+        description: |
+          Every assembly step must have exactly one corresponding
+          illustration. No step should be text-only, and no step should
+          have multiple competing illustrations.
+
+          Exceptions:
+          - Checkpoint steps (IL-014) are additional to the action step
+          - Do/Don't comparisons (IL-013) count as the step's single
+            illustration (the pair is one unit)
+        applies_to:
+          - "pass3"
+          - "quality_check"
+        validation:
+          type: "automated_check"
+          check_function: "validateOneIllustrationPerStep"
+          severity: "error"
+        examples:
+          good:
+            - "Every step from 1-16 has exactly one illustration"
+          bad:
+            - "Steps 4-6 share a single illustration"
+            - "Step 8 has three different angle views (one should be primary)"
+
+      - id: "IL-017"
+        title: "Consistent viewing angle"
+        origin: "EXISTING"
+        priority: "should"
+        description: |
+          Maintain a similar isometric viewing angle within each phase of
+          assembly. The angle should only change when:
+
+          - The furniture needs to be flipped or rotated between phases
+          - A different angle is necessary to show the current step's action
+          - The step explicitly says "Turn the unit around"
+
+          Within a phase, the viewing angle should be stable so users can
+          track progress visually from step to step.
+        applies_to:
+          - "pass3"
+          - "quality_check"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "warning"
+        examples:
+          good:
+            - "Steps 1-5 (frame assembly) all shown from the same front-left isometric angle"
+          bad:
+            - "Step 1 from front-left, step 2 from behind, step 3 from above, step 4 from the right — disorienting"
+
+      - id: "IL-018"
+        title: "Complexity-based model routing"
+        origin: "EXISTING"
+        priority: "should"
+        description: |
+          Route illustration generation to the appropriate AI model based
+          on step complexity:
+
+          - **Nano Banana** (Gemini 2.5 Flash Image): Simple steps with
+            1-2 parts, straightforward insertion or attachment, no fine
+            detail needed
+          - **Nano Banana Pro** (Gemini 3 Pro Image Preview): Complex steps
+            with 3+ parts, exploded views, detail callouts, fine hardware,
+            or Do/Don't comparisons
+
+          Complexity scoring should consider:
+          - Number of active parts in the step
+          - Whether exploded view or detail callout is needed
+          - Whether it's a Do/Don't comparison
+          - Whether multiple arrows/rotations are required
+        applies_to:
+          - "pass3"
+        validation:
+          type: "automated_check"
+          check_function: "validateModelRouting"
+          severity: "info"
+        examples:
+          good:
+            - "Step 'Insert 2 dowels' routed to Nano Banana (simple). Step 'Assemble cam lock mechanism with 4 parts' routed to Nano Banana Pro (complex)"
+          bad:
+            - "All steps routed to Pro model (wasteful and slow) or all to Flash model (quality issues on complex steps)"

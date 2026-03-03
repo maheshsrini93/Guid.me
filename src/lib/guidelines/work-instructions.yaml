@@ -1,0 +1,1120 @@
+# =============================================================================
+# Guid.me — Work Instruction Guidelines
+# =============================================================================
+# These requirements govern how the AI pipeline writes assembly guide text.
+# Each requirement is tagged with the pipeline pass(es) it applies to and
+# a validation strategy so downstream code can filter and enforce them.
+#
+# Origin key:
+#   CS-xxx   = Adapted from aerospace content standard (simplified for DIY)
+#   EXISTING = Already implemented in codebase, now formalized
+#   NEW/DIY-xxx = New requirement specific to consumer assembly guides
+# =============================================================================
+
+version: "1.0"
+scope: "work_instructions"
+updated_at: "2026-02-16"
+description: |
+  Writing standards for AI-generated assembly guides. Covers structure,
+  metadata, safety, step-writing style, step content, and DIY-specific
+  requirements. All guides must follow these rules to ensure consistent
+  quality across tens of thousands of product guides.
+
+categories:
+  # ---------------------------------------------------------------------------
+  # 1. GUIDE STRUCTURE
+  # ---------------------------------------------------------------------------
+  - name: "Guide Structure"
+    description: |
+      Top-level organization and section ordering for every assembly guide.
+      Ensures users always find information in a predictable location.
+
+    requirements:
+      - id: "WI-001"
+        title: "Structured guide layout"
+        origin: "CS-001"
+        priority: "must"
+        description: |
+          Every guide must follow a consistent top-level structure:
+
+          1. **Safety warnings** (if any) — shown first, before any assembly
+          2. **Overview** — what the product is, what you'll build
+          3. **Tools required** — complete list before starting
+          4. **Parts list** — every part with quantity and ID label
+          5. **Assembly steps** — numbered, one action per step
+          6. **Completion** — final checks, cleanup, usage tips
+
+          This ordering ensures users see hazards first, gather materials
+          second, and only then begin assembly.
+        applies_to:
+          - "pass1"
+          - "pass2"
+          - "quality_check"
+        validation:
+          type: "automated_check"
+          check_function: "validateGuideStructure"
+          severity: "error"
+        examples:
+          good:
+            - "Guide begins with safety warnings, then overview, tools, parts, steps, and finishing section"
+          bad:
+            - "Guide jumps straight into step 1 without listing tools or parts"
+            - "Safety warnings appear after step 5 instead of before step 1"
+
+      - id: "WI-002"
+        title: "Guide title format"
+        origin: "CS-003"
+        priority: "must"
+        description: |
+          Guide titles must:
+          - Start with an action verb (Assemble, Build, Install, Set Up)
+          - Use title case
+          - Be 60 characters or fewer
+          - Include the product name
+          - Not include the brand name (it's shown elsewhere in the UI)
+
+          Format: `[Verb] [Product Name]`
+        applies_to:
+          - "pass2"
+          - "quality_check"
+        validation:
+          type: "automated_check"
+          check_function: "validateGuideTitle"
+          severity: "error"
+        examples:
+          good:
+            - "Assemble the KALLAX Shelf Unit"
+            - "Install the MALM Bed Frame"
+            - "Set Up the BEKANT Sit/Stand Desk"
+          bad:
+            - "KALLAX Assembly Instructions"
+            - "How to Put Together Your New IKEA KALLAX Shelf"
+            - "kallax shelf unit assembly"
+
+      - id: "WI-003"
+        title: "Purpose/function statement"
+        origin: "CS-015"
+        priority: "should"
+        description: |
+          Each guide should open with a brief statement explaining what the
+          finished product does or what the user will accomplish. This sets
+          context and helps users confirm they have the right guide.
+
+          - Start with "To assemble..." or "This guide walks you through..."
+          - Maximum 50 words
+          - Mention the key function of the finished product
+        applies_to:
+          - "pass2"
+          - "quality_check"
+        validation:
+          type: "automated_check"
+          check_function: "validatePurposeStatement"
+          severity: "warning"
+        examples:
+          good:
+            - "To assemble the KALLAX shelf unit — a modular bookcase with 4 cube compartments that can be placed vertically or horizontally."
+          bad:
+            - "This document contains instructions for product number 802.758.87."
+
+      - id: "WI-004"
+        title: "Section flow order"
+        origin: "CS-016"
+        priority: "should"
+        description: |
+          Recommended section ordering within a guide:
+
+          1. Overview (what you're building)
+          2. Safety warnings
+          3. People required
+          4. Tools needed
+          5. Parts verification
+          6. Preparation / workspace
+          7. Assembly steps
+          8. Finishing up
+
+          Sections may be omitted if not applicable (e.g., no safety warnings
+          for a simple shelf), but present sections must follow this order.
+        applies_to:
+          - "pass2"
+          - "quality_check"
+        validation:
+          type: "automated_check"
+          check_function: "validateSectionOrder"
+          severity: "warning"
+        examples:
+          good:
+            - "Overview → Safety → Tools → Parts → Steps → Finishing"
+          bad:
+            - "Steps → Tools → Parts → Safety"
+
+      - id: "WI-005"
+        title: "'Before You Begin' section"
+        origin: "CS-022"
+        priority: "should"
+        description: |
+          Include a "Before You Begin" section that covers:
+
+          - **Workspace**: Minimum floor space needed, surface recommendations
+          - **Tools**: Confirm all tools are gathered
+          - **Parts**: "Open all packages and verify parts against the list"
+          - **Preconditions**: Any prior steps (e.g., "ensure wall anchors are
+            available if mounting to wall")
+
+          This prevents mid-assembly interruptions to find missing pieces.
+        applies_to:
+          - "pass2"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "info"
+        examples:
+          good:
+            - "Before You Begin: Clear a 2m x 2m floor area. Verify all parts against the list on page 2. Have a Phillips screwdriver and rubber mallet ready."
+          bad:
+            - "Step 1: Find part A and insert into part B. (No preparation context)"
+
+      - id: "WI-006"
+        title: "Assembly phases/sections"
+        origin: "CS-046"
+        priority: "should"
+        description: |
+          For guides with more than 12 steps, group steps into labeled phases
+          that reflect logical assembly stages. Phase names should be
+          descriptive and help users understand overall progress.
+
+          Typical phases:
+          - "Frame Assembly" (steps 1-5)
+          - "Shelf Installation" (steps 6-9)
+          - "Door Mounting" (steps 10-14)
+          - "Final Adjustments" (steps 15-16)
+        applies_to:
+          - "pass2"
+          - "viewer"
+        validation:
+          type: "automated_check"
+          check_function: "validatePhaseGrouping"
+          severity: "warning"
+        examples:
+          good:
+            - "Phase 1: Frame Assembly (Steps 1-5) → Phase 2: Drawer Installation (Steps 6-10)"
+          bad:
+            - "A 25-step guide with no grouping or phase labels"
+
+      - id: "WI-007"
+        title: "'Finishing Up' section"
+        origin: "CS-025"
+        priority: "should"
+        description: |
+          Every guide should end with a completion section that covers:
+
+          1. **Tighten check**: "Go back and tighten all screws you left loose
+             during assembly"
+          2. **Wall anchoring**: Remind if product should be anchored (see WI-019)
+          3. **Level check**: "Ensure the furniture sits level on the floor"
+          4. **Cleanup**: "Dispose of packaging responsibly. Keep hardware bag
+             with spare parts for future use"
+          5. **Usage tips**: Brief note on weight limits or care if relevant
+        applies_to:
+          - "pass2"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "info"
+        examples:
+          good:
+            - "Finishing Up: Tighten all screws. Anchor to wall using included hardware. Keep the spare parts bag in a drawer."
+          bad:
+            - "Guide ends abruptly at 'Insert last shelf.'"
+
+  # ---------------------------------------------------------------------------
+  # 2. GUIDE HEADER / METADATA
+  # ---------------------------------------------------------------------------
+  - name: "Guide Header / Metadata"
+    description: |
+      Structured data fields that appear in the guide header card. These are
+      extracted by the AI and stored as database fields, not free text.
+
+    requirements:
+      - id: "WI-008"
+        title: "Safety classification"
+        origin: "CS-004"
+        priority: "must"
+        description: |
+          Every guide must be assigned a safety risk level:
+
+          - **Low**: No sharp edges, no heavy parts, no tip-over risk
+            (e.g., small shelf, picture frame)
+          - **Medium**: Some heavy parts OR sharp edges OR requires two people
+            for one or more steps (e.g., bookcase, desk)
+          - **High**: Tip-over risk, wall anchoring required, heavy lifting,
+            or glass/sharp components (e.g., tall wardrobe, glass-door cabinet)
+
+          The AI determines this from the product type, weight, height, and
+          assembly complexity.
+        applies_to:
+          - "pass1"
+          - "quality_check"
+          - "data_model"
+        validation:
+          type: "automated_check"
+          check_function: "validateSafetyClassification"
+          severity: "error"
+        examples:
+          good:
+            - "Safety: Medium — contains heavy panels requiring two-person lift"
+          bad:
+            - "Safety: N/A"
+
+      - id: "WI-009"
+        title: "Estimated time"
+        origin: "CS-005"
+        priority: "must"
+        description: |
+          Provide a realistic time estimate in minutes for the complete
+          assembly. This is displayed prominently in the guide header.
+
+          Guidelines for estimation:
+          - Count number of steps × average time per step type
+          - Add buffer for organization and cleanup (10-15%)
+          - Simple shelf: 20-30 min, Medium desk: 45-90 min, Complex wardrobe: 2-4 hrs
+          - Round to nearest 5 minutes for estimates under 60 min
+          - Round to nearest 15 minutes for estimates over 60 min
+          - Include drying/setting time if applicable (noted separately)
+        applies_to:
+          - "pass2"
+          - "data_model"
+        validation:
+          type: "automated_check"
+          check_function: "validateEstimatedTime"
+          severity: "warning"
+        examples:
+          good:
+            - "Estimated time: 45 minutes"
+            - "Estimated time: 2 hours 15 minutes (plus 30 minutes drying time)"
+          bad:
+            - "Time: varies"
+            - "Estimated time: 7 minutes (for a 35-step wardrobe)"
+
+      - id: "WI-010"
+        title: "Persons required"
+        origin: "CS-006"
+        priority: "must"
+        description: |
+          State the minimum number of people needed for assembly.
+
+          - **1 person**: Default for most small-to-medium furniture
+          - **2 people**: Required when any step involves lifting panels
+            heavier than ~15 kg, holding large frames upright, or when the
+            manufacturer PDF shows two-person icons
+
+          If only some steps require 2 people, still mark the guide as
+          "2 people" but note which specific steps need the helper.
+        applies_to:
+          - "pass1"
+          - "pass2"
+          - "data_model"
+        validation:
+          type: "automated_check"
+          check_function: "validatePersonsRequired"
+          severity: "error"
+        examples:
+          good:
+            - "People: 2 (steps 3, 7, and 12 require a second person)"
+          bad:
+            - "People: 1 (for a 2m tall wardrobe with 30kg panels)"
+
+      - id: "WI-011"
+        title: "Skill level indicator"
+        origin: "CS-007"
+        priority: "should"
+        description: |
+          Assign a skill level to help users gauge difficulty:
+
+          - **none**: No tools needed, snap-together assembly
+          - **basic_hand_tools**: Screwdriver, Allen key (included), rubber
+            mallet — typical IKEA assembly
+          - **power_tools_recommended**: Drill recommended for efficiency or
+            wall mounting required
+
+          This is a metadata field, not free text in the guide body.
+        applies_to:
+          - "pass1"
+          - "data_model"
+        validation:
+          type: "automated_check"
+          check_function: "validateSkillLevel"
+          severity: "warning"
+        examples:
+          good:
+            - "Skill level: basic_hand_tools"
+          bad:
+            - "Skill level: intermediate (undefined category)"
+
+      - id: "WI-012"
+        title: "Safety gear suggestions"
+        origin: "CS-008"
+        priority: "nice_to_have"
+        description: |
+          For medium and high safety level guides, suggest appropriate
+          safety gear as plain-text recommendations (not requirements):
+
+          - **Gloves**: When handling raw wood edges or metal brackets
+          - **Safety glasses**: When drilling or hammering
+          - **Knee pads**: For extended floor-level assembly
+          - **Closed-toe shoes**: For heavy furniture assembly
+
+          Phrased as suggestions: "We recommend gloves when handling the
+          unfinished wood panels."
+        applies_to:
+          - "pass2"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "info"
+        examples:
+          good:
+            - "Recommended: Gloves for handling unfinished wood edges"
+          bad:
+            - "PPE Required: ANSI-rated safety glasses mandatory"
+
+      - id: "WI-013"
+        title: "Tool list"
+        origin: "CS-010"
+        priority: "must"
+        description: |
+          List every tool needed for assembly, including:
+
+          - Tools included with the product (Allen keys, usually)
+          - Tools the user must provide (Phillips screwdriver, rubber mallet)
+          - Quantities if multiples needed
+
+          Distinguish between "included" and "not included" tools.
+          Display in the guide header before steps begin.
+        applies_to:
+          - "pass1"
+          - "pass2"
+          - "quality_check"
+        validation:
+          type: "automated_check"
+          check_function: "validateToolList"
+          severity: "error"
+        examples:
+          good:
+            - "Tools — Included: Allen key (1). You provide: Phillips screwdriver, rubber mallet, level"
+          bad:
+            - "Tools: screwdriver"
+
+      - id: "WI-014"
+        title: "Parts list with verification"
+        origin: "CS-012"
+        priority: "must"
+        description: |
+          Generate a complete parts list showing:
+
+          - Part label (A, B, C...)
+          - Part name (side panel, shelf pin, cam lock)
+          - Quantity expected
+          - Brief description or distinguishing feature if parts look similar
+
+          Include a verification prompt: "Lay out all parts and check them
+          against this list before starting assembly."
+        applies_to:
+          - "pass1"
+          - "pass2"
+          - "quality_check"
+        validation:
+          type: "automated_check"
+          check_function: "validatePartsList"
+          severity: "error"
+        examples:
+          good:
+            - "Part A — Side panel (2): 200cm × 40cm, white laminate\nPart B — Shelf (4): 76cm × 38cm, white laminate\n...\n✓ Verify all parts before starting"
+          bad:
+            - "Parts: see included parts list"
+
+  # ---------------------------------------------------------------------------
+  # 3. SAFETY
+  # ---------------------------------------------------------------------------
+  - name: "Safety"
+    description: |
+      Rules for generating, placing, and formatting safety-related content.
+      Safety callouts must always appear BEFORE the hazardous action.
+
+    requirements:
+      - id: "WI-015"
+        title: "Caution/Warning/Danger callouts"
+        origin: "CS-026"
+        priority: "must"
+        description: |
+          Use three severity levels for safety callouts:
+
+          - **Caution** (yellow): Minor injury risk or product damage possible.
+            "Caution: The shelf edges are sharp. Handle with care."
+          - **Warning** (orange): Moderate injury risk. "Warning: This panel
+            weighs 25 kg. Use two people to lift."
+          - **Danger** (red): Serious injury risk. "Danger: Secure wardrobe
+            to wall immediately. Unsecured furniture can tip over onto children."
+
+          Rules:
+          - Place the callout BEFORE the step it relates to, never after
+          - Use the mildest appropriate severity — don't over-warn
+          - Include the specific hazard AND the mitigation action
+        applies_to:
+          - "pass1"
+          - "pass2"
+          - "quality_check"
+          - "viewer"
+        validation:
+          type: "automated_check"
+          check_function: "validateSafetyCallouts"
+          severity: "error"
+        examples:
+          good:
+            - "⚠️ Warning: The back panel has sharp edges. Wear gloves when handling.\n\nStep 8: Slide the back panel into the grooves..."
+          bad:
+            - "Step 8: Slide the back panel into the grooves. Note: edges may be sharp."
+
+      - id: "WI-016"
+        title: "Product damage warnings"
+        origin: "CS-027"
+        priority: "should"
+        description: |
+          Add product damage notices before steps where incorrect technique
+          could damage the furniture:
+
+          - "Don't overtighten — cam locks should be snug, not forced"
+          - "Place laminate side down on cardboard to prevent scratching"
+          - "Don't use a power drill on cam locks"
+
+          Use a distinct "Notice" callout style (blue/info level), separate
+          from safety warnings.
+        applies_to:
+          - "pass2"
+          - "viewer"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "warning"
+        examples:
+          good:
+            - "Notice: Don't overtighten the cam lock. Turn until snug — forcing it can crack the panel."
+          bad:
+            - "BE CAREFUL!!!! DON'T BREAK IT!!!!"
+
+      - id: "WI-017"
+        title: "AI safety-aware generation"
+        origin: "CS-054"
+        priority: "must"
+        description: |
+          The AI must automatically detect and flag safety-relevant situations
+          during guide generation, even when the source PDF doesn't explicitly
+          warn about them:
+
+          - **Heavy lift**: Panels estimated >15 kg based on dimensions/material
+          - **Sharp edges**: Unfinished wood, metal brackets, glass components
+          - **Tip-over risk**: Furniture height >60 cm with narrow base
+          - **Pinch points**: Hinges, drawer slides, folding mechanisms
+          - **Overhead work**: Steps requiring reaching above shoulder height
+
+          When detected, automatically insert appropriate callout (WI-015).
+        applies_to:
+          - "pass1"
+          - "pass2"
+          - "quality_check"
+        validation:
+          type: "automated_check"
+          check_function: "validateSafetyDetection"
+          severity: "error"
+        examples:
+          good:
+            - "AI detects 200cm tall wardrobe with 35cm depth → auto-inserts tip-over warning and wall anchoring step"
+          bad:
+            - "AI generates guide for tall, narrow bookcase with no tip-over mention"
+
+      - id: "WI-018"
+        title: "Two-person step flagging"
+        origin: "NEW/DIY-002"
+        priority: "must"
+        description: |
+          Any step requiring two or more people must be prominently flagged
+          with a visual indicator (icon + text). This prevents a solo
+          assembler from attempting a dangerous lift or hold alone.
+
+          Flag when:
+          - Lifting or flipping panels estimated >15 kg
+          - Holding a frame upright while attaching supports
+          - The source PDF shows a two-person icon
+          - The step involves positioning a large assembled section
+        applies_to:
+          - "pass1"
+          - "pass2"
+          - "viewer"
+          - "data_model"
+        validation:
+          type: "automated_check"
+          check_function: "validateTwoPersonFlags"
+          severity: "error"
+        examples:
+          good:
+            - "👥 Two people needed\nStep 7: With a helper, lift the frame upright and hold it steady while attaching the back panel."
+          bad:
+            - "Step 7: Lift the 30kg frame upright. (No two-person indicator)"
+
+      - id: "WI-019"
+        title: "Wall anchoring advisory"
+        origin: "NEW/DIY-004"
+        priority: "must"
+        description: |
+          For any furniture taller than 60 cm, include a mandatory wall
+          anchoring advisory. This is a child safety requirement.
+
+          - Add a Danger-level callout in the Finishing section
+          - Reference the included anchoring hardware (if any)
+          - Provide brief anchoring instructions or link to them
+          - Note: "Furniture that is not anchored to the wall can tip over.
+            Children can be seriously injured."
+        applies_to:
+          - "pass2"
+          - "quality_check"
+        validation:
+          type: "automated_check"
+          check_function: "validateWallAnchoring"
+          severity: "error"
+        examples:
+          good:
+            - "🔴 Danger: Anchor this bookcase to the wall using the included L-bracket and screws. Unanchored furniture can tip over and injure children."
+          bad:
+            - "Tip: You might want to anchor this to the wall sometime."
+
+      - id: "WI-020"
+        title: "Safety warning reiteration"
+        origin: "CS-026"
+        priority: "should"
+        description: |
+          When a hazard type recurs in later steps, repeat the safety callout.
+          Don't assume the user remembers a warning from 10 steps ago.
+
+          - If step 3 warns about sharp edges on panel A, and step 11 involves
+            a similar panel B, repeat the sharp edge warning at step 11
+          - Use a shortened form: "⚠️ Reminder: Sharp edges — wear gloves"
+          - Don't repeat for consecutive steps (only when there's a gap)
+        applies_to:
+          - "pass2"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "info"
+        examples:
+          good:
+            - "Step 11: ⚠️ Reminder: Sharp edges on this panel — wear gloves.\nAttach side panel B using 4 cam locks..."
+          bad:
+            - "Sharp edge warning only at step 3, nothing at step 11 with identical panel type"
+
+  # ---------------------------------------------------------------------------
+  # 4. STEP WRITING STYLE
+  # ---------------------------------------------------------------------------
+  - name: "Step Writing Style"
+    description: |
+      Rules for the linguistic style of individual assembly steps. These
+      ensure clarity, consistency, and accessibility across all guides.
+
+    requirements:
+      - id: "WI-021"
+        title: "One instruction per step"
+        origin: "CS-029"
+        priority: "must"
+        description: |
+          Each numbered step must contain exactly one clear action. If a
+          step requires multiple sub-actions, break them into separate steps
+          or use lettered sub-steps (a, b, c).
+
+          A "single action" means one physical movement or operation:
+          - Insert, tighten, attach, slide, flip, align
+
+          NOT single action:
+          - "Insert the dowels and then attach the shelf" (two actions)
+        applies_to:
+          - "pass1"
+          - "pass2"
+          - "quality_check"
+        validation:
+          type: "automated_check"
+          check_function: "validateOneActionPerStep"
+          severity: "error"
+        examples:
+          good:
+            - "Step 3: Insert 4 wooden dowels (A) into the pre-drilled holes on the top edge of the side panel (B)."
+          bad:
+            - "Step 3: Insert the dowels into the side panel and then attach the shelf and tighten the cam locks."
+
+      - id: "WI-022"
+        title: "Verb-first imperative syntax"
+        origin: "CS-030"
+        priority: "must"
+        description: |
+          Every step must begin with an imperative action verb:
+
+          **Preferred verbs**: Insert, Attach, Tighten, Slide, Place, Align,
+          Press, Push, Lower, Lift, Flip, Screw, Snap, Hook, Position, Secure
+
+          **Avoid**: "You should...", "The next thing to do is...",
+          "Now we need to...", "Take the..."
+
+          Exception: Conditional steps may start with "If" (see WI-029).
+        applies_to:
+          - "pass1"
+          - "pass2"
+          - "quality_check"
+        validation:
+          type: "automated_check"
+          check_function: "validateVerbFirstSyntax"
+          severity: "error"
+        examples:
+          good:
+            - "Insert 2 cam lock bolts into the bottom of the top panel."
+            - "Tighten the cam lock by turning clockwise until snug."
+          bad:
+            - "You should now insert the cam lock bolts."
+            - "The cam lock bolts need to be inserted into the panel."
+            - "Next, take the cam lock bolts and put them in."
+
+      - id: "WI-023"
+        title: "Active voice only"
+        origin: "CS-053"
+        priority: "must"
+        description: |
+          All instructions must use active voice. Passive voice creates
+          ambiguity about who performs the action.
+
+          - Active: "Tighten the screw until flush"
+          - Passive: "The screw should be tightened until flush" (who does it?)
+
+          The AI must rewrite any passive constructions detected in source
+          material into active imperative form.
+        applies_to:
+          - "pass2"
+          - "quality_check"
+        validation:
+          type: "automated_check"
+          check_function: "validateActiveVoice"
+          severity: "warning"
+        examples:
+          good:
+            - "Attach the bracket to the wall using 2 screws."
+          bad:
+            - "The bracket should be attached to the wall."
+            - "It is recommended that the bracket be secured."
+
+      - id: "WI-024"
+        title: "Short sentences"
+        origin: "EXISTING"
+        priority: "must"
+        description: |
+          Keep sentences to 20 words or fewer. Assembly instructions are
+          read in awkward physical positions (kneeling, holding parts) —
+          shorter sentences are easier to scan and remember.
+
+          If a step needs more detail, use a sub-note below the main
+          instruction rather than a longer sentence.
+        applies_to:
+          - "pass2"
+          - "quality_check"
+        validation:
+          type: "automated_check"
+          check_function: "validateSentenceLength"
+          severity: "warning"
+        examples:
+          good:
+            - "Insert 4 dowels into the top edge of panel B. (10 words)"
+          bad:
+            - "Take the four wooden dowels that came in bag number three and carefully insert each one into the pre-drilled holes that you'll find along the top edge of the large side panel marked B. (35 words)"
+
+      - id: "WI-025"
+        title: "Specific part references with IDs"
+        origin: "CS-031"
+        priority: "must"
+        description: |
+          Always reference parts by their descriptive name AND their letter
+          label from the parts list.
+
+          - First mention: full name + label: "wooden dowel (A)"
+          - Subsequent mentions: short name + label: "dowel (A)"
+          - Never use label alone: "(A)" without context
+          - Never use description alone: "the dowel" without label
+        applies_to:
+          - "pass1"
+          - "pass2"
+          - "quality_check"
+        validation:
+          type: "automated_check"
+          check_function: "validatePartReferences"
+          severity: "error"
+        examples:
+          good:
+            - "Insert 4 wooden dowels (A) into side panel (B)."
+            - "Attach the shelf (D) using the dowels (A) from the previous step."
+          bad:
+            - "Insert the dowels into the panel."
+            - "Insert A into B."
+
+      - id: "WI-026"
+        title: "Include quantities"
+        origin: "EXISTING"
+        priority: "must"
+        description: |
+          Always specify the exact quantity of parts or fasteners used in
+          each step. Never use vague references.
+
+          - "Insert **4** wooden dowels" not "Insert the dowels"
+          - "Use **2** cam lock screws" not "Use cam lock screws"
+          - "Attach **1** bracket on each side" not "Attach brackets on each side"
+        applies_to:
+          - "pass1"
+          - "pass2"
+          - "quality_check"
+        validation:
+          type: "automated_check"
+          check_function: "validateQuantities"
+          severity: "warning"
+        examples:
+          good:
+            - "Insert 4 wooden dowels (A) into the 4 pre-drilled holes."
+          bad:
+            - "Insert the dowels into the holes."
+            - "Insert dowels (some of them) into the panel."
+
+      - id: "WI-027"
+        title: "Directional specificity"
+        origin: "EXISTING"
+        priority: "should"
+        description: |
+          When orientation matters, specify exact direction or position:
+
+          - "into the **left** side panel" not "into the side panel"
+          - "on the **bottom** edge" not "on the edge"
+          - "facing **forward** (laminate side out)" not "facing the right way"
+
+          Use the product's natural orientation (front = the finished face
+          that users will see). When ambiguous, clarify with a brief
+          parenthetical: "(the side with pre-drilled holes faces inward)."
+        applies_to:
+          - "pass1"
+          - "pass2"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "warning"
+        examples:
+          good:
+            - "Attach bracket (F) to the inside of the LEFT side panel (B), 15 cm from the bottom edge."
+          bad:
+            - "Attach the bracket to the side panel near the bottom."
+
+      - id: "WI-028"
+        title: "Consistent terminology"
+        origin: "CS-056"
+        priority: "must"
+        description: |
+          Use the same name for the same part throughout the entire guide.
+          Once a part is introduced as "shelf pin (E)", it must always be
+          called "shelf pin (E)" — never switching to "peg", "support pin",
+          "dowel pin", or similar.
+
+          Common terminology decisions to make once and hold:
+          - "cam lock" (not "cam bolt", "cam screw", "connector")
+          - "dowel" (not "peg", "pin", "wooden connector")
+          - "Allen key" (not "hex wrench", "hex key" — unless region-specific)
+
+          The AI should establish a terminology glossary in pass 1 and
+          enforce it in pass 2.
+        applies_to:
+          - "pass1"
+          - "pass2"
+          - "quality_check"
+        validation:
+          type: "automated_check"
+          check_function: "validateTerminologyConsistency"
+          severity: "error"
+        examples:
+          good:
+            - "Step 3: Insert shelf pin (E)... Step 9: Insert 4 more shelf pins (E)..."
+          bad:
+            - "Step 3: Insert shelf pin (E)... Step 9: Insert 4 pegs into the holes..."
+
+  # ---------------------------------------------------------------------------
+  # 5. STEP CONTENT
+  # ---------------------------------------------------------------------------
+  - name: "Step Content"
+    description: |
+      Rules governing the informational content within steps — conditional
+      logic, cross-references, transitions, timing, and fastener guidance.
+
+    requirements:
+      - id: "WI-029"
+        title: "Conditional step format"
+        origin: "CS-030"
+        priority: "should"
+        description: |
+          When a step has a conditional (if/when), structure it as:
+
+          **"If [condition], [action]."**
+
+          - Always use a comma after the condition clause
+          - Keep the condition first so users can skip if not applicable
+          - Use "If" for optional conditions, "When" for expected states
+
+          For mutually exclusive configurations (e.g., left-hand vs right-hand
+          door), use separate labeled sub-steps.
+        applies_to:
+          - "pass2"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "info"
+        examples:
+          good:
+            - "If the panel feels tight, gently tap with a rubber mallet."
+            - "When the cam lock clicks, stop turning."
+          bad:
+            - "Gently tap with a rubber mallet if the panel feels tight and also check alignment."
+
+      - id: "WI-030"
+        title: "Cross-step references"
+        origin: "EXISTING"
+        priority: "should"
+        description: |
+          When a step builds on a previous assembly, reference the earlier
+          steps to maintain continuity:
+
+          - "Using the frame assembled in Steps 1–3..."
+          - "Repeat the dowel insertion from Step 4 on the opposite side."
+
+          This is especially important after phase transitions where the user
+          may have taken a break.
+        applies_to:
+          - "pass2"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "info"
+        examples:
+          good:
+            - "Using the frame from Steps 1-3, attach the top panel (C) with 4 cam locks."
+          bad:
+            - "Attach the top panel. (No reference to what it's being attached to)"
+
+      - id: "WI-031"
+        title: "Transition language at phase boundaries"
+        origin: "EXISTING"
+        priority: "nice_to_have"
+        description: |
+          At phase transitions (between major assembly stages), add a brief
+          orienting sentence:
+
+          - "The base frame is now complete. Next, you'll install the shelves."
+          - "Flip the unit upright. The remaining steps are done with the
+            furniture standing."
+
+          This helps users who took a break re-orient themselves.
+        applies_to:
+          - "pass2"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "info"
+        examples:
+          good:
+            - "Phase 2: Shelf Installation\nThe frame is now complete. Set it upright before continuing."
+          bad:
+            - "Phase 2: Shelf Installation\nStep 8: Insert shelf..."
+
+      - id: "WI-032"
+        title: "Drying/setting time callouts"
+        origin: "CS-047"
+        priority: "must"
+        description: |
+          When a step involves adhesive, paint, or any material that needs
+          drying or setting time:
+
+          - Display as a prominent callout (not buried in step text)
+          - State the specific time: "Allow 30 minutes for glue to set"
+          - Note if assembly can continue during the wait
+          - Include in the total estimated time calculation
+        applies_to:
+          - "pass1"
+          - "pass2"
+          - "viewer"
+        validation:
+          type: "automated_check"
+          check_function: "validateDryingTimes"
+          severity: "warning"
+        examples:
+          good:
+            - "⏱️ Wait 30 minutes for the wood glue to set before continuing to Step 12."
+          bad:
+            - "Step 11: Apply wood glue and attach the panel. Step 12: Attach the shelf to the panel. (No drying time mentioned)"
+
+      - id: "WI-033"
+        title: "Fastener guidance"
+        origin: "CS-037"
+        priority: "should"
+        description: |
+          Describe fastener tightness using tactile/visual cues, not
+          engineering units:
+
+          - "Hand-tight plus a quarter turn"
+          - "Until the screw head is flush with the surface"
+          - "Until you feel resistance — don't force it"
+          - "Snug but not overtightened"
+
+          Never use torque values (Nm, ft-lbs) in consumer assembly guides.
+        applies_to:
+          - "pass2"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "info"
+        examples:
+          good:
+            - "Tighten the cam lock clockwise until snug. Don't overtighten — it should feel firm but not forced."
+          bad:
+            - "Torque the fastener to 4.5 Nm."
+            - "Tighten appropriately. (Too vague)"
+
+  # ---------------------------------------------------------------------------
+  # 6. DIY-SPECIFIC
+  # ---------------------------------------------------------------------------
+  - name: "DIY-Specific"
+    description: |
+      Requirements unique to consumer assembly guides that don't exist in
+      aerospace or industrial standards. These address the specific context
+      of home assembly by non-professionals.
+
+    requirements:
+      - id: "WI-034"
+        title: "Workspace requirements"
+        origin: "NEW/DIY-001"
+        priority: "should"
+        description: |
+          Include workspace recommendations in the "Before You Begin" section:
+
+          - **Floor space**: Minimum area needed (based on product dimensions + 50% buffer)
+          - **Surface**: "Clear, flat floor — carpet is OK for small items, hard floor preferred for large furniture"
+          - **Protection**: "Use the packaging cardboard under the furniture to prevent floor scratches"
+          - **Lighting**: "Ensure good lighting — you'll need to read small labels on parts"
+        applies_to:
+          - "pass2"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "info"
+        examples:
+          good:
+            - "Workspace: Clear at least 2.5m × 2m of floor space. Place the cardboard packaging underneath to protect your floor."
+          bad:
+            - "Find a place to build your furniture."
+
+      - id: "WI-035"
+        title: "Common mistakes section"
+        origin: "NEW/DIY-003"
+        priority: "should"
+        description: |
+          Include 2-3 "common mistakes to avoid" in the Before You Begin
+          section, tailored to the product type:
+
+          - **Bookshelves**: "Don't tighten cam locks fully until all shelves are in place"
+          - **Beds**: "Make sure the slat direction is correct before inserting — the curve faces UP"
+          - **Desks**: "Keep the desk upside-down for as long as possible to reduce flipping"
+
+          These should be based on common patterns the AI can infer from
+          product type and assembly complexity.
+        applies_to:
+          - "pass2"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "info"
+        examples:
+          good:
+            - "Common Mistakes:\n• Don't tighten cam locks fully until all panels are connected\n• Make sure the laminate (finished) side faces outward\n• Check that all dowels are fully seated before moving on"
+          bad:
+            - "Try not to make mistakes."
+
+      - id: "WI-036"
+        title: "Packaging as tool"
+        origin: "NEW/DIY-005"
+        priority: "nice_to_have"
+        description: |
+          When useful, note that packaging materials can serve as assembly aids:
+
+          - Cardboard as floor protector during assembly
+          - Styrofoam blocks as temporary supports while aligning panels
+          - Plastic wrap for grouping loose hardware by step
+
+          Only include when genuinely helpful — don't force it.
+        applies_to:
+          - "pass2"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "info"
+        examples:
+          good:
+            - "Tip: Keep the large cardboard piece — use it under the furniture to prevent floor scratches during assembly."
+          bad:
+            - "Recycle all packaging immediately before starting."
+
+      - id: "WI-037"
+        title: "Progressive difficulty indicator"
+        origin: "NEW/DIY-006"
+        priority: "nice_to_have"
+        description: |
+          For guides with varying step difficulty, add a per-step difficulty
+          hint so users know when to slow down and pay extra attention:
+
+          - Most steps: no indicator (normal difficulty)
+          - Tricky steps: "🔶 This step is tricky — take your time"
+          - Critical alignment: "🎯 Precision matters here — double-check alignment before tightening"
+
+          Use sparingly — marking too many steps as difficult dilutes the signal.
+          Maximum 3-4 flagged steps per guide.
+        applies_to:
+          - "pass2"
+          - "viewer"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "info"
+        examples:
+          good:
+            - "🔶 This step is tricky\nStep 12: Align the drawer slides so the front gap is exactly even on both sides."
+          bad:
+            - "Every single step marked as 'tricky' or 'be careful'"
+
+      - id: "WI-038"
+        title: "Photo checkpoints"
+        origin: "NEW/DIY-007"
+        priority: "should"
+        description: |
+          At major phase transitions, include a checkpoint that shows what
+          the assembly should look like at that point:
+
+          - "Your assembly should now look like the image below"
+          - Placed at the end of each phase (every 4-8 steps)
+          - The illustration for this step shows the cumulative assembly
+          - Helps users verify they haven't made a mistake before continuing
+
+          These checkpoints pair with illustration requirement IL-014.
+        applies_to:
+          - "pass2"
+          - "pass3"
+          - "viewer"
+        validation:
+          type: "prompt_instruction"
+          check_function: null
+          severity: "warning"
+        examples:
+          good:
+            - "✅ Checkpoint: Your frame should now look like the image below. Verify all 8 dowels are seated and the panels are square before continuing."
+          bad:
+            - "Proceed to the next phase. (No verification opportunity)"
