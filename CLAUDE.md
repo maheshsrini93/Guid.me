@@ -165,3 +165,16 @@ Set `DEMO_MODE=true` to use pre-cached results. The pipeline monitor animates id
 - `Input-docs/work-instructions.yaml` — 38 writing requirements (WI-001 to WI-038)
 - `Input-docs/illustrations.yaml` — 18 illustration requirements (IL-001 to IL-018)
 - `Input-docs/CLAUDE.md` — Guid.how CLAUDE.md (previous project, IKEA-focused)
+
+## Project Docs
+
+| Document | Purpose |
+|----------|---------|
+| `docs/master-plan.md` | Vision, problem, users, features, anti-goals, success criteria |
+| `docs/implementation-plan.md` | Tech stack, architecture, components, data model, build phases, decisions |
+| `docs/design-guidelines.md` | Colors, typography, spacing, layout, components, pipeline UI, animations |
+| `docs/user-journeys.md` | 3 personas, 3 journeys, edge cases, error states, information architecture |
+| `docs/tasks.md` | 65 tasks with dependency IDs across 5 milestones (T-001 to T-065) |
+| `docs/changelog.md` | Chronological record of all project changes |
+
+**Task dependencies:** Every task in `tasks.md` has explicit `(depends: ...)` declarations enabling parallel agent-team execution. Check the critical path and parallelism table at the bottom of the file.
