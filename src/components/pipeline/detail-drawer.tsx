@@ -120,7 +120,7 @@ export function DetailDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-[480px] overflow-y-auto"
+        className="w-full max-w-[90vw] sm:max-w-[480px] overflow-y-auto"
       >
         <SheetHeader>
           <div className="flex items-center gap-3">

@@ -1,6 +1,6 @@
 # Guid -- Task List
 
-> **Last Updated:** 2026-03-04 (Phase 3 completed)
+> **Last Updated:** 2026-03-04 (Rich Work Instruction Viewer T-066–T-068 completed)
 > **Project:** General Unified Industrialization Dashboard
 > **Authoritative Spec:** [`docs/prd.md`](./prd.md)
 
@@ -144,44 +144,54 @@ Task IDs are sequential (`T-001` through `T-069`). Every task declares its depen
 
 ### Cost and tracking
 
-- [ ] `T-052` **Cost tracking refinement** (depends: T-027, T-041) -- Per-agent cost breakdown stored in agent_executions, cumulative cost in jobs table updated after each agent, cost displayed in pipeline monitor header, final cost in XML generation-metadata, per-model pricing configuration
+- [x] `T-052` **Cost tracking refinement** (depends: T-027, T-041) -- Per-agent cost breakdown stored in agent_executions, cumulative cost in jobs table updated after each agent, cost displayed in pipeline monitor header, final cost in XML generation-metadata, per-model pricing configuration
 
 ### Cancellation
 
-- [ ] `T-053` **Cancel job implementation** (depends: T-021) -- POST /api/jobs/[jobId]/cancel sets cancellation flag, orchestrator checks flag between agent steps and aborts gracefully, job status transitions to `cancelled`, SSE emits pipeline:cancelled event, pipeline monitor shows cancelled state
+- [x] `T-053` **Cancel job implementation** (depends: T-021) -- POST /api/jobs/[jobId]/cancel sets cancellation flag, orchestrator checks flag between agent steps and aborts gracefully, job status transitions to `cancelled`, SSE emits pipeline:cancelled event, pipeline monitor shows cancelled state
 
 ### Demo mode
 
-- [ ] `T-054` **Demo mode: pre-cached results** (depends: T-041) -- `src/lib/demo/` directory with stored results for a demo document (extracted pages, vision analysis, composed steps, enforced steps, review scores, illustrations, final XML), orchestrator detects `DEMO_MODE=true` and replays cached results
-- [ ] `T-055` **Demo mode: realistic timing** (depends: T-054) -- Configurable delays simulating actual API latency per agent, SSE events emitted with realistic timing, cost ticker increments match production behavior, pipeline monitor animates identically to live execution
+- [x] `T-054` **Demo mode: pre-cached results** (depends: T-041) -- `src/lib/demo/` directory with stored results for a demo document (extracted pages, vision analysis, composed steps, enforced steps, review scores, illustrations, final XML), orchestrator detects `DEMO_MODE=true` and replays cached results
+- [x] `T-055` **Demo mode: realistic timing** (depends: T-054) -- Configurable delays simulating actual API latency per agent, SSE events emitted with realistic timing, cost ticker increments match production behavior, pipeline monitor animates identically to live execution
 
 ### Error handling
 
-- [ ] `T-056` **Error handling polish** (depends: T-041) -- Graceful failure handling across all agents: exponential backoff with jitter (up to 3 retries), per-agent 60-second timeout, user-facing error messages in agent cards, pipeline transitions to `failed` on unrecoverable errors, full error details in agent_executions table
-- [ ] `T-057` **Loading and empty states** (depends: T-029, T-043) -- Skeleton loading states for all async content areas, empty state on upload page when no jobs exist, "Pipeline in progress" banner on output page when job is not complete, shimmer placeholders in illustration gallery
+- [x] `T-056` **Error handling polish** (depends: T-041) -- Graceful failure handling across all agents: exponential backoff with jitter (up to 3 retries), per-agent 60-second timeout, user-facing error messages in agent cards, pipeline transitions to `failed` on unrecoverable errors, full error details in agent_executions table
+- [x] `T-057` **Loading and empty states** (depends: T-029, T-043) -- Skeleton loading states for all async content areas, empty state on upload page when no jobs exist, "Pipeline in progress" banner on output page when job is not complete, shimmer placeholders in illustration gallery
 
 ### Export
 
-- [ ] `T-058` **Export functionality** (depends: T-043) -- XML download button on output page triggering browser file download, JSON available via GET /api/jobs/[jobId]/result with Accept header, filename derived from job name and timestamp
+- [x] `T-058` **Export functionality** (depends: T-043) -- XML download button on output page triggering browser file download, JSON available via GET /api/jobs/[jobId]/result with Accept header, filename derived from job name and timestamp
 
 ### Theme
 
-- [ ] `T-059` **Light/dark mode toggle** (depends: T-007) -- Sun/moon icon button in page header, respect `prefers-color-scheme` on first visit, persist preference in localStorage, all components use Tailwind `dark:` variants per design guidelines
+- [x] `T-059` **Light/dark mode toggle** (depends: T-007) -- Sun/moon icon button in page header, respect `prefers-color-scheme` on first visit, persist preference in localStorage, all components use Tailwind `dark:` variants per design guidelines
 
 ### Responsive
 
-- [ ] `T-060` **Responsive layout verification** (depends: T-029, T-030, T-043) -- Upload page centered single-column (`max-w-xl`), pipeline monitor responsive grid (1 col mobile / 2 col `md:` / 4 col `lg:`), output review two-column `lg:` (XML + sidebar) stacked on mobile, drawer adapts to mobile viewport
+- [x] `T-060` **Responsive layout verification** (depends: T-029, T-030, T-043) -- Upload page centered single-column (`max-w-xl`), pipeline monitor responsive grid (1 col mobile / 2 col `md:` / 4 col `lg:`), output review two-column `lg:` (XML + sidebar) stacked on mobile, drawer adapts to mobile viewport
 
 ### Job history
 
-- [ ] `T-061` **GET /api/jobs (list all jobs)** (depends: T-002) -- Return paginated list of all jobs with status, filename, domain, quality score, created date, total cost, sorted by most recent first
-- [ ] `T-062` **Recent jobs list on upload page** (depends: T-061, T-030) -- Table or card list below the upload form showing recent jobs: filename, status badge, date, quality score, cost, link to output or pipeline monitor
+- [x] `T-061` **GET /api/jobs (list all jobs)** (depends: T-002) -- Return paginated list of all jobs with status, filename, domain, quality score, created date, total cost, sorted by most recent first
+- [x] `T-062` **Recent jobs list on upload page** (depends: T-061, T-030) -- Table or card list below the upload form showing recent jobs: filename, status badge, date, quality score, cost, link to output or pipeline monitor
 
 ### Rehearsal
 
-- [ ] `T-063` **Demo rehearsal script** (depends: T-054, T-055) -- Written walkthrough script aligned with Alex's user journey (30s intro, 5s upload, 10s configure, 2.5 min pipeline, 1.5 min output review), timing targets per agent, talking points for each step
-- [ ] `T-064` **End-to-end test with demo document** (depends: T-041, T-047) -- Full pipeline test with the demo PDF: upload -> agents 1-8 -> XML output + illustrations, verify quality score >= 85, verify all illustrations generated, verify XML validates, verify total time < 5 minutes
+- [x] `T-063` **Demo rehearsal script** (depends: T-054, T-055) -- Written walkthrough script aligned with Alex's user journey (30s intro, 5s upload, 10s configure, 2.5 min pipeline, 1.5 min output review), timing targets per agent, talking points for each step
+- [x] `T-064` **End-to-end test with demo document** (depends: T-041, T-047) -- Full pipeline test with the demo PDF: upload -> agents 1-8 -> XML output + illustrations, verify quality score >= 85, verify all illustrations generated, verify XML validates, verify total time < 5 minutes
 - [ ] `T-065` **Timing optimization** (depends: T-064) -- Profile pipeline execution, identify bottlenecks, optimize illustration generation parallelism where possible, tune SSE event frequency, ensure demo completes within the 5-minute target
+
+---
+
+## Rich Work Instruction Viewer (Post-Phase 5)
+
+> **Goal:** Rendered work instruction view as the default output tab, replacing raw XML for end-users.
+
+- [x] `T-066` **Instruction viewer components** (depends: T-043) -- 8 new components in `src/components/output/`: safety-callout (severity-colored banners), procedure-header (metadata + parts + tools), step-card (instruction + badges + inline illustration), phase-section (phase heading + steps), instruction-toc (left sidebar navigation), instruction-illustration (right sidebar with scroll/hover sync), instruction-content (center pane), instruction-viewer (3-pane orchestrator with IntersectionObserver)
+- [x] `T-067` **Output page integration** (depends: T-066) -- Added "Work Instruction" as default tab on output page, renders InstructionViewer from jsonContent, existing XML/Illustrations/Quality/Cost tabs preserved
+- [x] `T-068` **Documentation updates** (depends: T-067) -- Updated changelog, tasks, master-plan with new viewer feature
 
 ---
 

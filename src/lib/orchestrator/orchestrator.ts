@@ -13,12 +13,13 @@ import { instructionComposerConfig } from "@/lib/agents/configs/instruction-comp
 import { guidelineEnforcerConfig } from "@/lib/agents/configs/guideline-enforcer.config";
 import { qualityReviewerConfig } from "@/lib/agents/configs/quality-reviewer.config";
 import { safetyReviewerConfig } from "@/lib/agents/configs/safety-reviewer.config";
-import { PipelineCancelledError } from "@/lib/agents/types";
+import { PipelineCancelledError, classifyError } from "@/lib/agents/types";
 import { postProcess } from "@/lib/guidelines/post-processor";
 import { validateGuide, summarizeFlags } from "@/lib/quality/validator-registry";
 import { evaluateQualityGate } from "@/lib/quality/quality-gate";
 import { config } from "@/lib/config";
 import { pipelineEvents } from "./event-emitter";
+import { runDemoPipeline, cancelDemoPipeline } from "@/lib/demo/demo-manager";
 
 /** Track cancellation state per job */
 const cancelledJobs = new Map<string, { current: boolean }>();
@@ -27,6 +28,10 @@ const cancelledJobs = new Map<string, { current: boolean }>();
  * Cancel a running pipeline.
  */
 export function cancelPipeline(jobId: string): void {
+  if (config.demoMode) {
+    cancelDemoPipeline(jobId);
+    return;
+  }
   const ref = cancelledJobs.get(jobId);
   if (ref) {
     ref.current = true;
@@ -42,6 +47,11 @@ export async function runPipeline(
   documentPath: string,
   mimeType: string,
 ): Promise<void> {
+  // Demo mode: use cached results with realistic timing
+  if (config.demoMode) {
+    return runDemoPipeline(jobId);
+  }
+
   const cancelledRef = { current: false };
   cancelledJobs.set(jobId, cancelledRef);
 
@@ -232,8 +242,7 @@ export async function runPipeline(
       durationMs: Date.now() - state.startedAt.getTime(),
     });
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : String(error);
+    const errorMessage = classifyError(error);
 
     if (error instanceof PipelineCancelledError) {
       state.status = "cancelled";

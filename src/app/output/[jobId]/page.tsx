@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { IllustrationGallery } from "@/components/output/illustration-gallery";
+import { InstructionViewer } from "@/components/output/instruction-viewer";
+import type { XmlWorkInstruction } from "@/types/xml";
 
 interface JobResult {
   job: {
@@ -87,14 +89,14 @@ interface CostEntry {
   outputTokens: number | null;
 }
 
-type Tab = "xml" | "illustrations" | "quality" | "cost";
+type Tab = "instruction" | "xml" | "illustrations" | "quality" | "cost";
 
 export default function OutputReviewPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const [result, setResult] = useState<JobResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>("xml");
+  const [activeTab, setActiveTab] = useState<Tab>("instruction");
 
   useEffect(() => {
     async function fetchResult() {
@@ -122,9 +124,14 @@ export default function OutputReviewPage() {
       type: "application/xml",
     });
     const url = URL.createObjectURL(blob);
+    const baseName = result.job.filename
+      .replace(/\.[^.]+$/, "")
+      .replace(/[^a-zA-Z0-9_\-. ]/g, "_")
+      .replace(/\s+/g, "_");
+    const timestamp = new Date().toISOString().slice(0, 10);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `work-instruction-${jobId.substring(0, 8)}.xml`;
+    a.download = `${baseName}_${timestamp}.xml`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -145,30 +152,53 @@ export default function OutputReviewPage() {
   }
 
   if (error) {
+    const isInProgress = error.toLowerCase().includes("not yet completed") || error.toLowerCase().includes("not completed") || error.toLowerCase().includes("still running") || error.toLowerCase().includes("in progress");
     return (
       <div className="min-h-screen bg-background">
         <Header jobId={jobId} />
         <main className="max-w-7xl mx-auto px-4 sm:px-8 py-8">
-          <div className="rounded-lg border border-rose-200 bg-rose-50 dark:border-rose-800 dark:bg-rose-950 p-6">
-            <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
-              <XCircle className="w-5 h-5" />
-              <p className="text-sm font-medium">{error}</p>
+          {isInProgress ? (
+            <div className="rounded-lg border border-indigo-200 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-950 p-6">
+              <div className="flex items-center gap-3">
+                <div className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500" />
+                </div>
+                <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
+                  Pipeline is still in progress. Results will be available once all agents complete.
+                </p>
+              </div>
+              <div className="mt-4">
+                <Link
+                  href={`/pipeline/${jobId}`}
+                  className="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 underline underline-offset-4"
+                >
+                  View Pipeline Monitor
+                </Link>
+              </div>
             </div>
-            <div className="mt-4 flex gap-3">
-              <Link
-                href={`/pipeline/${jobId}`}
-                className="text-sm text-indigo-600 hover:text-indigo-700 underline underline-offset-4"
-              >
-                View Pipeline
-              </Link>
-              <Link
-                href="/"
-                className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4"
-              >
-                Back to Upload
-              </Link>
+          ) : (
+            <div className="rounded-lg border border-rose-200 bg-rose-50 dark:border-rose-800 dark:bg-rose-950 p-6">
+              <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+                <XCircle className="w-5 h-5" />
+                <p className="text-sm font-medium">{error}</p>
+              </div>
+              <div className="mt-4 flex gap-3">
+                <Link
+                  href={`/pipeline/${jobId}`}
+                  className="text-sm text-indigo-600 hover:text-indigo-700 underline underline-offset-4"
+                >
+                  View Pipeline
+                </Link>
+                <Link
+                  href="/"
+                  className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4"
+                >
+                  Back to Upload
+                </Link>
+              </div>
             </div>
-          </div>
+          )}
         </main>
       </div>
     );
@@ -231,8 +261,14 @@ export default function OutputReviewPage() {
         </div>
 
         {/* Tabs */}
-        <div className="mt-8 border-b border-slate-200 dark:border-slate-800">
-          <nav className="flex gap-6">
+        <div className="mt-8 border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
+          <nav className="flex gap-4 sm:gap-6 min-w-max">
+            <TabButton
+              active={activeTab === "instruction"}
+              onClick={() => setActiveTab("instruction")}
+              icon={<Layers className="w-4 h-4" />}
+              label="Work Instruction"
+            />
             <TabButton
               active={activeTab === "xml"}
               onClick={() => setActiveTab("xml")}
@@ -262,6 +298,24 @@ export default function OutputReviewPage() {
 
         {/* Tab content */}
         <div className="mt-6">
+          {activeTab === "instruction" && (() => {
+            const jsonContent = guide.jsonContent as XmlWorkInstruction | null;
+            if (!jsonContent) {
+              return (
+                <div className="text-center py-12 text-muted-foreground text-sm">
+                  No structured content available. View the XML tab instead.
+                </div>
+              );
+            }
+            const illustrationSteps = new Set(illustrations.map((il) => il.stepNumber));
+            return (
+              <InstructionViewer
+                data={jsonContent}
+                jobId={jobId}
+                illustrationSteps={illustrationSteps}
+              />
+            );
+          })()}
           {activeTab === "xml" && <XmlViewer xml={guide.xmlContent} />}
           {activeTab === "illustrations" && (
             <IllustrationGallery

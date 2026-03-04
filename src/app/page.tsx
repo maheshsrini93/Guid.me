@@ -45,6 +45,20 @@ const DOMAINS = [
   { value: "general", label: "General" },
 ];
 
+function formatDate(isoDate: string): string {
+  const date = new Date(isoDate);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60_000);
+  if (diffMin < 1) return "Just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDays = Math.floor(diffHr / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
+}
+
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -61,12 +75,14 @@ export default function UploadPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [recentJobs, setRecentJobs] = useState<RecentJob[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(true);
 
   useEffect(() => {
     fetch("/api/jobs")
       .then((res) => res.json())
       .then((data) => setRecentJobs(data.jobs || []))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setJobsLoading(false));
   }, []);
 
   const validateFile = useCallback((f: File): string | null => {
@@ -295,9 +311,40 @@ export default function UploadPage() {
         </Button>
 
         {/* Recent Jobs */}
-        {recentJobs.length > 0 && (
-          <div className="mt-16">
-            <h2 className="text-lg font-semibold mb-4">Recent Jobs</h2>
+        <div className="mt-16">
+          <h2 className="text-lg font-semibold mb-4">Recent Jobs</h2>
+
+          {/* Loading skeleton */}
+          {jobsLoading && (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 rounded-lg border p-3"
+                >
+                  <div className="w-4 h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse shrink-0" />
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <div className="h-4 w-40 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                    <div className="h-3 w-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                  </div>
+                  <div className="h-5 w-16 bg-slate-200 dark:bg-slate-700 rounded-full animate-pulse" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Empty state */}
+          {!jobsLoading && recentJobs.length === 0 && (
+            <div className="text-center py-10 border border-dashed rounded-lg">
+              <FileText className="w-8 h-8 mx-auto text-muted-foreground/50 mb-2" />
+              <p className="text-sm text-muted-foreground">
+                No recent jobs — upload your first document above
+              </p>
+            </div>
+          )}
+
+          {/* Job list */}
+          {!jobsLoading && recentJobs.length > 0 && (
             <div className="space-y-2">
               {recentJobs.slice(0, 10).map((job) => (
                 <Link
@@ -315,8 +362,8 @@ export default function UploadPage() {
                       {job.filename}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(job.createdAt).toLocaleDateString()}
-                      {job.domain && ` — ${job.domain}`}
+                      {formatDate(job.createdAt)}
+                      {job.domain && job.domain !== "general" && ` — ${job.domain}`}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -335,8 +382,8 @@ export default function UploadPage() {
                 </Link>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </main>
     </div>
   );

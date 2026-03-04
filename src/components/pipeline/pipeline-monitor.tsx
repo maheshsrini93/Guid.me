@@ -165,6 +165,16 @@ export function PipelineMonitor({ jobId }: PipelineMonitorProps) {
           </div>
         )}
 
+        {/* Cancelled banner */}
+        {state.status === "cancelled" && (
+          <div className="mb-6 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 flex items-center gap-3">
+            <XCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+              Pipeline cancelled by user
+            </span>
+          </div>
+        )}
+
         {/* Error banner */}
         {state.status === "failed" && state.error && (
           <div className="mb-6 rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20 p-4">

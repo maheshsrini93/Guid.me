@@ -152,7 +152,17 @@ Structure:
 - Revision routes feedback back to the Guideline Enforcer (agent 4), not separate agents
 - Maximum 2 revision loops to prevent infinite cycles
 
-### 7.7 Cost Transparency
+### 7.7 Rich Work Instruction Viewer
+
+- Default output tab: rendered work instruction document (not raw XML)
+- 3-pane desktop layout: left TOC, center procedure content, right illustration panel
+- Procedure header with metadata, parts table, tools list, safety warnings
+- Step cards with instruction text, part badges, tool references, safety callouts
+- Scroll-tracked TOC and illustration sync via IntersectionObserver
+- Responsive: mobile uses FAB drawer for TOC, inline illustrations in step cards
+- Lightbox zoom for illustrations
+
+### 7.8 Cost Transparency
 
 - Per-agent cost calculated from token counts and model pricing
 - Running total displayed in the pipeline monitor

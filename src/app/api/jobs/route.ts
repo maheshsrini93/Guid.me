@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { jobs, agentExecutions } from "@/lib/db/schema";
+import { jobs } from "@/lib/db/schema";
 import { generateId } from "@/lib/utils/ulid";
 import { saveFile, getUploadPath, ensureStorageDir } from "@/lib/utils/file-storage";
 import { config } from "@/lib/config";
@@ -101,9 +101,24 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/jobs — List all jobs, newest first.
+ * Supports pagination via ?limit=N&offset=N query params.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = request.nextUrl;
+    const limit = Math.min(
+      Math.max(parseInt(searchParams.get("limit") ?? "20", 10) || 20, 1),
+      100,
+    );
+    const offset = Math.max(parseInt(searchParams.get("offset") ?? "0", 10) || 0, 0);
+
+    // Total count for pagination
+    const countResult = db
+      .select({ count: sql<number>`count(*)` })
+      .from(jobs)
+      .get();
+    const total = countResult?.count ?? 0;
+
     const allJobs = db
       .select({
         id: jobs.id,
@@ -123,9 +138,16 @@ export async function GET() {
       })
       .from(jobs)
       .orderBy(desc(jobs.createdAt))
+      .limit(limit)
+      .offset(offset)
       .all();
 
-    return NextResponse.json({ jobs: allJobs });
+    return NextResponse.json({
+      jobs: allJobs,
+      total,
+      limit,
+      offset,
+    });
   } catch (error) {
     console.error("[GET /api/jobs] Error:", error);
     return NextResponse.json(

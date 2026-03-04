@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Image from "next/image";
 import { X, ZoomIn, Image as ImageIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export interface IllustrationData {
   stepNumber: number;
@@ -34,34 +35,12 @@ export function IllustrationGallery({
     <>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {illustrations.map((il) => (
-          <button
+          <IllustrationCard
             key={il.stepNumber}
-            onClick={() => setSelected(il)}
-            className="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-          >
-            <div className="aspect-square relative bg-slate-50 dark:bg-slate-800">
-              <Image
-                src={`/api/jobs/${jobId}/illustrations/${il.stepNumber}`}
-                alt={`Step ${il.stepNumber} illustration`}
-                fill
-                className="object-contain p-2"
-                sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-              />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-80 transition-opacity drop-shadow-lg" />
-              </div>
-            </div>
-            <div className="p-3 text-left">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-fuchsia-100 dark:bg-fuchsia-900/50 text-fuchsia-600 dark:text-fuchsia-400 text-xs font-medium">
-                  {il.stepNumber}
-                </span>
-                <span className="text-xs text-slate-600 dark:text-slate-400 truncate">
-                  {il.title || `Step ${il.stepNumber}`}
-                </span>
-              </div>
-            </div>
-          </button>
+            jobId={jobId}
+            illustration={il}
+            onSelect={() => setSelected(il)}
+          />
         ))}
       </div>
 
@@ -114,5 +93,61 @@ export function IllustrationGallery({
         </div>
       )}
     </>
+  );
+}
+
+// ============================================================
+// Illustration Card with shimmer placeholder
+// ============================================================
+
+function IllustrationCard({
+  jobId,
+  illustration: il,
+  onSelect,
+}: {
+  jobId: string;
+  illustration: IllustrationData;
+  onSelect: () => void;
+}) {
+  const [loaded, setLoaded] = useState(false);
+  const handleLoad = useCallback(() => setLoaded(true), []);
+
+  return (
+    <button
+      onClick={onSelect}
+      className="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+    >
+      <div className="aspect-square relative bg-slate-50 dark:bg-slate-800">
+        {/* Shimmer placeholder */}
+        {!loaded && (
+          <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 bg-[length:200%_100%]">
+            <div className="flex items-center justify-center h-full">
+              <ImageIcon className="w-8 h-8 text-slate-300 dark:text-slate-600" />
+            </div>
+          </div>
+        )}
+        <Image
+          src={`/api/jobs/${jobId}/illustrations/${il.stepNumber}`}
+          alt={`Step ${il.stepNumber} illustration`}
+          fill
+          className={cn("object-contain p-2 transition-opacity", loaded ? "opacity-100" : "opacity-0")}
+          sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+          onLoad={handleLoad}
+        />
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+          <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-80 transition-opacity drop-shadow-lg" />
+        </div>
+      </div>
+      <div className="p-3 text-left">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-fuchsia-100 dark:bg-fuchsia-900/50 text-fuchsia-600 dark:text-fuchsia-400 text-xs font-medium">
+            {il.stepNumber}
+          </span>
+          <span className="text-xs text-slate-600 dark:text-slate-400 truncate">
+            {il.title || `Step ${il.stepNumber}`}
+          </span>
+        </div>
+      </div>
+    </button>
   );
 }

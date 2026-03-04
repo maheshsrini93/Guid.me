@@ -12,4 +12,23 @@ export const config = {
   maxFileSizeMb: parseInt(process.env.MAX_FILE_SIZE_MB ?? "50", 10),
   demoMode: process.env.DEMO_MODE === "true",
   logLevel: process.env.LOG_LEVEL ?? "info",
+  /** Per-agent timeout in milliseconds (default 60s) */
+  agentTimeoutMs: parseInt(process.env.AGENT_TIMEOUT_MS ?? "60000", 10),
 } as const;
+
+// ============================================================
+// Model Pricing (USD per 1M tokens, per Gemini API docs)
+// ============================================================
+
+export interface ModelPricing {
+  inputPerMillion: number;
+  outputPerMillion: number;
+}
+
+export const MODEL_PRICING: Record<string, ModelPricing> = {
+  "gemini-2.5-flash": { inputPerMillion: 0.15, outputPerMillion: 0.60 },
+  "gemini-2.5-pro": { inputPerMillion: 1.25, outputPerMillion: 5.0 },
+};
+
+/** Flat cost per generated image (USD) */
+export const IMAGE_COST_USD = 0.04;

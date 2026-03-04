@@ -1,4 +1,4 @@
-import { config } from "@/lib/config";
+import { config, MODEL_PRICING, IMAGE_COST_USD } from "@/lib/config";
 
 // ============================================================
 // Model IDs (from config / environment)
@@ -7,24 +7,6 @@ import { config } from "@/lib/config";
 export const FLASH_MODEL = config.geminiFlashModel;
 export const PRO_MODEL = config.geminiProModel;
 export const IMAGE_MODEL = config.geminiImageModel;
-
-// ============================================================
-// Token Pricing (approximate, per Gemini API docs)
-// ============================================================
-
-/** Cost per 1M tokens, in USD */
-interface ModelPricing {
-  inputPerMillion: number;
-  outputPerMillion: number;
-}
-
-const PRICING: Record<string, ModelPricing> = {
-  "gemini-2.5-flash": { inputPerMillion: 0.15, outputPerMillion: 0.60 },
-  "gemini-2.5-pro": { inputPerMillion: 1.25, outputPerMillion: 5.0 },
-};
-
-/** Approximate cost per image generation */
-const IMAGE_COST_USD = 0.04;
 
 /**
  * Calculate the cost of a text generation call.
@@ -35,7 +17,7 @@ export function calculateCost(
   inputTokens: number,
   outputTokens: number,
 ): number {
-  const pricing = PRICING[model] ?? PRICING["gemini-2.5-flash"];
+  const pricing = MODEL_PRICING[model] ?? MODEL_PRICING["gemini-2.5-flash"];
   const inputCost = (inputTokens / 1_000_000) * pricing.inputPerMillion;
   const outputCost = (outputTokens / 1_000_000) * pricing.outputPerMillion;
   return Math.round((inputCost + outputCost) * 1_000_000) / 1_000_000; // round to 6 decimal places

@@ -4,7 +4,7 @@ import { waitForSlot } from "@/lib/gemini/rate-limiter";
 import { readFile } from "@/lib/utils/file-storage";
 import { generateId } from "@/lib/utils/ulid";
 import { withRetry } from "./retry";
-import { PipelineCancelledError } from "./types";
+import { PipelineCancelledError, classifyError } from "./types";
 import type { AgentConfig, AgentContext, AgentResult } from "./types";
 
 /**
@@ -152,7 +152,7 @@ export async function runConfigAgent<TOutput>(
     });
 
     context.emit("pipeline:error", {
-      error: errorMessage,
+      error: classifyError(error),
       agent: config.name,
       recoverable: false,
     });

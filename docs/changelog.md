@@ -8,6 +8,61 @@ Format: Each entry includes a date, category, and description of the change.
 
 ## 2026-03-04
 
+### Added — Rich Work Instruction Viewer (T-066 through T-068)
+
+**Trigger:** User-requested feature — rendered work instruction viewer as default output tab
+
+**New files (8):**
+- `src/components/output/safety-callout.tsx` — Reusable severity-colored callout banner (danger/warning/caution) with appropriate icons
+- `src/components/output/procedure-header.tsx` — Metadata card: title, purpose, badges (domain, safety, skill), info row (time, persons), safety warnings, parts table, tools list
+- `src/components/output/step-card.tsx` — Step card: number badge, title, instruction, parts badges, tools, two-person indicator, safety callouts, inline illustration (mobile), confidence indicator
+- `src/components/output/phase-section.tsx` — Phase heading + container for step cards
+- `src/components/output/instruction-toc.tsx` — Left sidebar: procedure title, overview link, phase/step navigation with active highlight
+- `src/components/output/instruction-illustration.tsx` — Right sidebar: illustration for active/hovered step with shimmer loading, lightbox zoom
+- `src/components/output/instruction-content.tsx` — Center pane composing procedure header + phase sections
+- `src/components/output/instruction-viewer.tsx` — Top-level 3-pane layout with IntersectionObserver scroll tracking, hover state, mobile TOC drawer
+
+**Updated files (1):**
+- `src/app/output/[jobId]/page.tsx` — Added "Work Instruction" tab (default), renders InstructionViewer from jsonContent, existing tabs (XML, Illustrations, Quality, Cost) remain
+
+**Layout:** Desktop 3-pane (TOC w-56 | Content flex-1 | Illustration w-72), Mobile single-column with FAB TOC drawer and inline illustrations
+
+**Build:** `pnpm build` succeeds
+
+---
+
+### Completed — Phase 5: Polish + Demo Prep (T-052 through T-062)
+
+**Trigger:** Implemented via plan-mode implementation
+
+**Tasks completed:** T-052, T-053, T-054, T-055, T-056, T-057, T-058, T-059, T-060, T-061, T-062, T-063, T-064
+
+**New files (4):**
+- `src/lib/demo/demo-data.ts` — Pre-cached demo data for all 8 agents: 6-step bookshelf assembly guide from 4-page PDF, including extracted document, page extractions, composed guide, enforced guide, quality review (91/100 approved), safety review, pre-built XML, per-agent cost records
+- `src/lib/demo/demo-timing.ts` — Per-agent timing configuration matching production latency (300ms-12s depending on agent), sleep utility
+- `src/lib/demo/demo-manager.ts` — Full demo pipeline orchestrator: replays cached results with realistic SSE events (agent:start, agent:progress, agent:complete, pipeline:cost), simulates parallel review (agents 5+6), persists demo results to DB, supports cancellation
+- `src/components/shared/theme-toggle.tsx` — Sun/moon toggle button with localStorage persistence, hydration-safe mounting
+
+**Updated files (14):**
+- `src/lib/config.ts` — Added `agentTimeoutMs` config, centralized `MODEL_PRICING` and `IMAGE_COST_USD` constants
+- `src/lib/gemini/models.ts` — Refactored to import pricing from centralized config
+- `src/lib/orchestrator/orchestrator.ts` — Demo mode branch (`config.demoMode` → `runDemoPipeline()`), user-friendly error classification via `classifyError()`
+- `src/lib/agents/types.ts` — Added `classifyError()` function mapping errors to user-friendly messages (API key, rate limit, timeout, network, parse errors, poppler missing)
+- `src/lib/agents/runner.ts` — Uses `classifyError()` for SSE error events
+- `src/components/pipeline/pipeline-monitor.tsx` — Added cancelled state banner (amber, XCircle icon)
+- `src/components/pipeline/detail-drawer.tsx` — Mobile viewport cap `max-w-[90vw]`
+- `src/components/output/illustration-gallery.tsx` — Shimmer placeholder with animate-pulse while images load, opacity transition on load
+- `src/app/page.tsx` — Loading skeleton for recent jobs (3 animated rows), empty state ("No recent jobs"), relative date formatting (Just now, 5m ago, 2h ago, 3d ago)
+- `src/app/output/[jobId]/page.tsx` — In-progress banner with pulsing dot when pipeline not yet complete, improved download filename (`{name}_{date}.xml`), scrollable tabs on mobile
+- `src/app/api/jobs/[jobId]/result/route.ts` — Accept header handling: `application/xml` returns raw XML with Content-Disposition, `sanitizeFilename()` helper
+- `src/app/api/jobs/route.ts` — Pagination via `?limit=N&offset=N`, returns `total` count, max 100 per page
+- `src/app/layout.tsx` — Inline theme script preventing FOUC, `suppressHydrationWarning`
+- `src/components/shared/header.tsx` — Integrated ThemeToggle component
+
+**Build:** `pnpm build` succeeds
+
+---
+
 ### Completed — Phase 4: Illustrations
 
 **Trigger:** Implemented via `/project-docs:implement`

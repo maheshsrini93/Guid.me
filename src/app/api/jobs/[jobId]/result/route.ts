@@ -8,7 +8,7 @@ import { jobs, generatedGuides, agentExecutions, generatedIllustrations } from "
  * Returns XML content, quality data, safety data, and generation metadata.
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ jobId: string }> },
 ) {
   try {
@@ -67,6 +67,18 @@ export async function GET(
       outputTokens: exec.outputTokens,
     }));
 
+    // If Accept: application/xml, return raw XML
+    const accept = request.headers.get("accept") ?? "";
+    if (accept.includes("application/xml") || accept.includes("text/xml")) {
+      const filename = sanitizeFilename(job.filename) + ".xml";
+      return new Response(guide.xmlContent, {
+        headers: {
+          "Content-Type": "application/xml; charset=utf-8",
+          "Content-Disposition": `attachment; filename="${filename}"`,
+        },
+      });
+    }
+
     return NextResponse.json({
       job: {
         id: job.id,
@@ -113,4 +125,13 @@ export async function GET(
       { status: 500 },
     );
   }
+}
+
+/** Strip extension and special characters from a filename for use in downloads */
+function sanitizeFilename(name: string): string {
+  return name
+    .replace(/\.[^.]+$/, "") // remove extension
+    .replace(/[^a-zA-Z0-9_\-. ]/g, "_") // replace special chars
+    .replace(/\s+/g, "_") // collapse whitespace
+    .substring(0, 100); // truncate
 }

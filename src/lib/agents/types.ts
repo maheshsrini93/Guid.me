@@ -156,3 +156,57 @@ export class PipelineCancelledError extends Error {
     this.name = "PipelineCancelledError";
   }
 }
+
+// ============================================================
+// User-friendly Error Classification
+// ============================================================
+
+/**
+ * Classify an error into a user-friendly message.
+ * Keeps technical details in the original error but provides
+ * a clear summary for display in the UI.
+ */
+export function classifyError(error: unknown): string {
+  if (error instanceof PipelineCancelledError) {
+    return "Pipeline cancelled by user.";
+  }
+  if (error instanceof AgentExhaustedError) {
+    const cause = error.cause instanceof Error ? error.cause.message : "";
+    if (cause.includes("429") || cause.includes("rate limit")) {
+      return `API rate limit reached after ${error.attempts} attempts. Try again in a few minutes.`;
+    }
+    if (cause.includes("timeout") || cause.includes("abort")) {
+      return `Agent "${error.agentName}" timed out after ${error.attempts} attempts. The document may be too large.`;
+    }
+    return `Agent "${error.agentName}" failed after ${error.attempts} attempts. Check your API key and try again.`;
+  }
+  if (error instanceof AgentValidationError) {
+    return `Input validation failed: ${error.message}`;
+  }
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes("api key") || msg.includes("unauthorized") || msg.includes("401")) {
+      return "Invalid or missing API key. Set GEMINI_API_KEY in your environment.";
+    }
+    if (msg.includes("rate limit") || msg.includes("429")) {
+      return "API rate limit reached. Wait a moment and try again.";
+    }
+    if (msg.includes("timeout") || msg.includes("abort")) {
+      return "Request timed out. The document may be too complex or the API is slow.";
+    }
+    if (msg.includes("network") || msg.includes("fetch failed") || msg.includes("econnrefused")) {
+      return "Network error. Check your internet connection and try again.";
+    }
+    if (msg.includes("json") && msg.includes("parse")) {
+      return "Received malformed response from AI model. Try again.";
+    }
+    if (msg.includes("no image") || msg.includes("no content")) {
+      return "AI model returned empty response. Try again with a different document.";
+    }
+    if (msg.includes("poppler") || msg.includes("pdftoppm")) {
+      return "PDF extraction tool not found. Install poppler: brew install poppler";
+    }
+    return error.message;
+  }
+  return String(error);
+}
