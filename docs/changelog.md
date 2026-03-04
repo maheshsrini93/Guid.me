@@ -8,6 +8,88 @@ Format: Each entry includes a date, category, and description of the change.
 
 ## 2026-03-04
 
+### Completed — Phase 4: Illustrations
+
+**Trigger:** Implemented via `/project-docs:implement`
+
+**Tasks completed:** T-045, T-046, T-047, T-048, T-049, T-050, T-051
+
+**New files (3):**
+- `src/lib/agents/illustration-generator.ts` — Agent 7: standalone class (not BaseCodeAgent) using Gemini Flash Image, per-step illustration generation with IL guidelines in prompts, part label mapping (IL-007: skip I/O), active/inactive part highlighting (IL-006), motion arrows, two-person indicators, per-step cost tracking and SSE progress
+- `src/app/api/jobs/[jobId]/illustrations/[step]/route.ts` — GET endpoint serving illustration PNGs from storage with caching headers
+- `src/components/output/illustration-gallery.tsx` — Responsive grid (2/3/4 col) of per-step illustration cards with fuchsia step badges, hover zoom, click-to-enlarge lightbox overlay
+
+**Updated files (4):**
+- `src/lib/orchestrator/orchestrator.ts` — Added illustrating state between reviewing and assembling, Agent 7 execution, illustration records persisted to generated_illustrations table after guide insert
+- `src/lib/agents/xml-assembler.ts` — Updated groupStepsIntoPhases to build stepNumber→filename map from state.illustrations, populates illustrationSrc on each XmlStep
+- `src/app/api/jobs/[jobId]/result/route.ts` — Added query for generated_illustrations, returns illustration metadata in response
+- `src/app/output/[jobId]/page.tsx` — Added "Illustrations" tab with IllustrationGallery component, step titles from JSON content, count badge
+
+**tasks.md** — Marked T-045 through T-051 as complete, Milestone 4 marked COMPLETED
+
+**Build:** `pnpm build` succeeds
+
+---
+
+### Completed — Phase 3: Quality + XML
+
+**Trigger:** Implemented via `/project-docs:implement`
+
+**Tasks completed:** T-032, T-033, T-034, T-035, T-036, T-037, T-038, T-039, T-040, T-041, T-042, T-043, T-044
+
+**New files (12):**
+- `src/lib/agents/schemas/quality-reviewer.schema.ts` — Gemini responseSchema for Agent 5 (QualityReviewResult: overallScore, decision enum, issues array with 12 category enums)
+- `src/lib/agents/schemas/safety-reviewer.schema.ts` — Gemini responseSchema for Agent 6 (SafetyReviewResult: safetyPassed, issues with 10 hazardType enums, recommendedSafetyLevel)
+- `src/lib/agents/prompts/quality-reviewer.ts` — Agent 5 system prompt (full YAML guidelines injection, 12 scoring criteria with point deductions) + user prompt
+- `src/lib/agents/prompts/safety-reviewer.ts` — Agent 6 system prompt (10 safety categories with detailed checks) + user prompt
+- `src/lib/agents/configs/quality-reviewer.config.ts` — AgentConfig for Gemini Pro, temp 0.3, 90s timeout
+- `src/lib/agents/configs/safety-reviewer.config.ts` — AgentConfig for Gemini Pro, temp 0.2, 90s timeout
+- `src/lib/quality/quality-gate.ts` — Quality gate: 70% quality + 30% safety weighted score, approve/revise/hold decision, revision feedback builder
+- `src/lib/guidelines/post-processor.ts` — 9 deterministic transforms: verb-first enforcement, sentence length, part ID insertion, safety tag normalization, whitespace cleanup, metric unit conversion, sentence case, hazard keyword detection
+- `src/lib/quality/validator-registry.ts` — 22 validators producing QualityFlag arrays with severity levels, covering verbs, sentence length, parts, safety, metadata, structure
+- `src/lib/agents/xml-assembler.ts` — Agent 8 BaseCodeAgent: collects pipeline outputs, groups steps into phases, deduplicates parts/tools, builds XmlWorkInstruction
+- `src/lib/xml/builder.ts` — XML builder producing canonical XML with namespace urn:guid:work-instruction:1.0, proper escaping, 2-space indentation
+
+**Updated files (3):**
+- `src/lib/orchestrator/orchestrator.ts` — Full pipeline: agents 1-4 → post-processor → agents 5+6 (Promise.all) → quality gate → revision loop (max 2) → agent 8 → persist to generated_guides → completed
+- `src/app/api/jobs/[jobId]/result/route.ts` — Implemented: returns job info, guide XML/JSON, quality/safety data, per-agent cost breakdown
+- `src/app/output/[jobId]/page.tsx` — Full output review: XML viewer (syntax highlighted, line numbers, collapsible, export), quality report (score ring, issue breakdown, quality/safety issue lists), cost breakdown (per-agent table, models used)
+
+**tasks.md** — Marked T-032 through T-044 as complete, Milestone 3 marked COMPLETED
+
+**Build:** `pnpm build` succeeds
+
+---
+
+### Completed — Phase 2: Frontend Pipeline Monitor
+
+**Trigger:** Implemented via `/project-docs:implement`
+
+**Tasks completed:** T-024, T-025, T-026, T-027, T-028, T-029, T-030, T-031
+
+**New files (7):**
+- `src/hooks/use-event-source.ts` — Custom React hook managing EventSource connection to SSE endpoint, automatic reconnection with exponential backoff, typed event parsing (7 event types), state reduction via useReducer mapping all SSE events to PipelineMonitorState
+- `src/components/pipeline/agent-card.tsx` — Agent card with 4 visual states (idle/active/complete/error), agent-specific color accents (8 colors), Lucide icons per agent, pulsing active dot, progress bar, duration + cost badges
+- `src/components/pipeline/pipeline-progress.tsx` — Horizontal connected-dot stepper showing current position in 8-agent sequence, active dots pulse, completed dots fill emerald, connector lines show progress
+- `src/components/pipeline/cost-ticker.tsx` — Running cost total in font-mono with brief indigo flash (300ms transition) on value change
+- `src/components/pipeline/detail-drawer.tsx` — Slide-in Sheet (480px max) showing agent name, model, token usage (input/output/total), timing, cost, collapsible prompt and response sections, error display
+- `src/components/pipeline/pipeline-monitor.tsx` — Full pipeline monitor view: header with elapsed timer + cost ticker + status badge, progress stepper, 8 agent cards in responsive grid, completion/error banners, cancel button, View Output link, detail drawer integration
+
+**Updated files (4):**
+- `src/app/page.tsx` — Full upload page: drag-and-drop file dropzone with preview, domain selector (7 options), quality threshold input (50-100), "Generate Work Instructions" button, recent jobs list with status badges
+- `src/app/pipeline/[jobId]/page.tsx` — Wired to PipelineMonitor client component with SSE integration
+- `src/app/output/[jobId]/page.tsx` — Added navigation header with Back link, View Pipeline link (placeholder for Phase 3 content)
+- `src/app/api/jobs/[jobId]/route.ts` — Updated to return full agent execution details including prompt/response for detail drawer
+
+**Dependencies added:**
+- `@radix-ui/react-dialog` (via shadcn Sheet component)
+
+**Build:** `pnpm build` succeeds
+
+**tasks.md** — Marked T-024 through T-031 as complete, Milestone 2 marked COMPLETED
+
+---
+
 ### Completed — Phase 1: Agent System Architecture + Text Pipeline
 
 **Architecture:**

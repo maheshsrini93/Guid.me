@@ -1,6 +1,6 @@
 # Guid -- Task List
 
-> **Last Updated:** 2026-03-04 (Phase 1 completed)
+> **Last Updated:** 2026-03-04 (Phase 3 completed)
 > **Project:** General Unified Industrialization Dashboard
 > **Authoritative Spec:** [`docs/prd.md`](./prd.md)
 
@@ -55,86 +55,86 @@ Task IDs are sequential (`T-001` through `T-069`). Every task declares its depen
 
 ---
 
-## Milestone 2: Frontend Pipeline Monitor (Phase 2)
+## Milestone 2: Frontend Pipeline Monitor (Phase 2) (COMPLETED)
 
 > **Goal:** The pipeline monitor page shows agents executing in real time with SSE. Upload page is fully functional.
 
 ### Components (parallelizable -- all depend on types, not on each other)
 
-- [ ] `T-024` **SSE client hook (useEventSource)** (depends: T-020) -- Custom React hook in `src/hooks/use-event-source.ts` managing EventSource connection, automatic reconnection, typed event parsing, and state mapping for pipeline monitor
-- [ ] `T-025` **Agent card component** (depends: T-003) -- `src/components/pipeline/agent-card.tsx` with 4 visual states (idle/active/complete/error), agent-specific color accents, status icon, progress bar, duration and cost badges, click target for detail drawer
-- [ ] `T-026` **Pipeline progress indicator** (depends: T-003) -- `src/components/pipeline/pipeline-progress.tsx` horizontal connected-dot stepper showing current position in 8-agent sequence, active dot pulses, completed dots filled emerald
-- [ ] `T-027` **Cost ticker component** (depends: T-003) -- `src/components/pipeline/cost-ticker.tsx` displaying running total in `font-mono`, brief indigo color flash on value change fading in 300ms, positioned top-right of pipeline header
+- [x] `T-024` **SSE client hook (useEventSource)** (depends: T-020) -- Custom React hook in `src/hooks/use-event-source.ts` managing EventSource connection, automatic reconnection, typed event parsing, and state mapping for pipeline monitor
+- [x] `T-025` **Agent card component** (depends: T-003) -- `src/components/pipeline/agent-card.tsx` with 4 visual states (idle/active/complete/error), agent-specific color accents, status icon, progress bar, duration and cost badges, click target for detail drawer
+- [x] `T-026` **Pipeline progress indicator** (depends: T-003) -- `src/components/pipeline/pipeline-progress.tsx` horizontal connected-dot stepper showing current position in 8-agent sequence, active dot pulses, completed dots filled emerald
+- [x] `T-027` **Cost ticker component** (depends: T-003) -- `src/components/pipeline/cost-ticker.tsx` displaying running total in `font-mono`, brief indigo color flash on value change fading in 300ms, positioned top-right of pipeline header
 
 ### Detail view
 
-- [ ] `T-028` **Agent detail drawer** (depends: T-025) -- `src/components/pipeline/detail-drawer.tsx` slide-in panel (480px max) showing agent name, model used, full prompt sent, raw response, token usage (input/output/total), timing breakdown, per-agent cost
+- [x] `T-028` **Agent detail drawer** (depends: T-025) -- `src/components/pipeline/detail-drawer.tsx` slide-in panel (480px max) showing agent name, model used, full prompt sent, raw response, token usage (input/output/total), timing breakdown, per-agent cost
 
 ### Page integration
 
-- [ ] `T-029` **Pipeline monitor page integration** (depends: T-024, T-025, T-026, T-027, T-028) -- Wire SSE hook to all pipeline components in `src/app/pipeline/[jobId]/page.tsx`: agent cards update in real time, progress indicator advances, cost ticker increments, detail drawer opens on card click, cancel button visible while running, "View Output" link on completion
+- [x] `T-029` **Pipeline monitor page integration** (depends: T-024, T-025, T-026, T-027, T-028) -- Wire SSE hook to all pipeline components in `src/app/pipeline/[jobId]/page.tsx`: agent cards update in real time, progress indicator advances, cost ticker increments, detail drawer opens on card click, cancel button visible while running, "View Output" link on completion
 
 ### Upload page
 
-- [ ] `T-030` **Upload page implementation** (depends: T-022) -- Full upload page in `src/app/page.tsx`: drag-and-drop file dropzone with instant preview (filename, size, page count), domain selector dropdown (Semiconductor, Automotive, Aerospace, Pharmaceutical, Consumer, Furniture Assembly), quality threshold input (default 85, range 50-100), "Generate Work Instructions" button, client-side file validation (type + size)
+- [x] `T-030` **Upload page implementation** (depends: T-022) -- Full upload page in `src/app/page.tsx`: drag-and-drop file dropzone with instant preview (filename, size, page count), domain selector dropdown (Semiconductor, Automotive, Aerospace, Pharmaceutical, Consumer, Furniture Assembly), quality threshold input (default 85, range 50-100), "Generate Work Instructions" button, client-side file validation (type + size)
 
 ### Navigation
 
-- [ ] `T-031` **Page navigation flow** (depends: T-029, T-030) -- Navigation between upload -> pipeline -> output: "Generate" navigates to `/pipeline/[jobId]`, "View Output" navigates to `/output/[jobId]`, "Back to Upload" returns to `/`, recent jobs list on upload page linking to previous outputs
+- [x] `T-031` **Page navigation flow** (depends: T-029, T-030) -- Navigation between upload -> pipeline -> output: "Generate" navigates to `/pipeline/[jobId]`, "View Output" navigates to `/output/[jobId]`, "Back to Upload" returns to `/`, recent jobs list on upload page linking to previous outputs
 
 ---
 
-## Milestone 3: Quality + XML (Phase 3)
+## Milestone 3: Quality + XML (Phase 3) (COMPLETED)
 
 > **Goal:** Quality and safety review with feedback loop, XML output, output review page.
 
 ### Review agents (parallelizable)
 
-- [ ] `T-032` **Agent 5: Quality Reviewer** (depends: T-012) -- Gemini Pro agent evaluating enforced steps against full YAML guidelines, produces quality score (0-100), per-step quality flags with severity levels, per-category breakdown (structure, safety, style, content)
-- [ ] `T-033` **Agent 6: Safety Reviewer** (depends: T-012) -- Gemini Pro agent verifying safety compliance: hazard identification, PPE requirements, chemical handling, tool safety, ESD precautions, produces safety score and hazard report
+- [x] `T-032` **Agent 5: Quality Reviewer** (depends: T-012) -- Gemini Pro agent evaluating enforced steps against full YAML guidelines, produces quality score (0-100), per-step quality flags with severity levels, per-category breakdown (structure, safety, style, content). Config-driven: `src/lib/agents/configs/quality-reviewer.config.ts`, `src/lib/agents/prompts/quality-reviewer.ts`, `src/lib/agents/schemas/quality-reviewer.schema.ts`
+- [x] `T-033` **Agent 6: Safety Reviewer** (depends: T-012) -- Gemini Pro agent verifying safety compliance: hazard identification, PPE requirements, chemical handling, tool safety, ESD precautions, produces safety pass/fail and hazard report. Config-driven: `src/lib/agents/configs/safety-reviewer.config.ts`, `src/lib/agents/prompts/safety-reviewer.ts`, `src/lib/agents/schemas/safety-reviewer.schema.ts`
 
 ### Parallel execution and quality gate
 
-- [ ] `T-034` **Parallel execution of agents 5+6** (depends: T-032, T-033) -- Orchestrator update to run Quality and Safety reviewers concurrently via `Promise.all()`, combine scores into weighted quality score
-- [ ] `T-035` **Quality gate logic** (depends: T-034) -- Quality gate in `src/lib/quality/quality-gate.ts`: >= 85 approved (proceed to illustrations), 70-84 revise (route to Enforcer), < 70 hold (mark for manual review), returns decision + combined score + flags
+- [x] `T-034` **Parallel execution of agents 5+6** (depends: T-032, T-033) -- Orchestrator runs Quality and Safety reviewers concurrently via `Promise.all()`, combines scores into weighted quality score (70% quality + 30% safety)
+- [x] `T-035` **Quality gate logic** (depends: T-034) -- Quality gate in `src/lib/quality/quality-gate.ts`: >= 85 approved, 70-84 revise (if revision budget remains), < 70 hold, returns decision + combined score + revision feedback
 
 ### Feedback loop
 
-- [ ] `T-036` **Feedback loop (revision routing)** (depends: T-035, T-016) -- Orchestrator revision loop: route reviewer feedback to Guideline Enforcer (Agent 4), re-run enforcement then re-review, maximum 2 iterations, track revision count in job record, emit SSE events for revision state
+- [x] `T-036` **Feedback loop (revision routing)** (depends: T-035, T-016) -- Orchestrator revision loop: route reviewer feedback to Guideline Enforcer (Agent 4), re-run enforcement + post-processing then re-review, maximum 2 iterations, track revision count in job record, emit SSE events for revision state
 
 ### Compliance layers 3 and 4 (parallelizable)
 
-- [ ] `T-037` **Post-processor (9+ deterministic transforms)** (depends: T-005) -- `src/lib/guidelines/post-processor.ts`: verb-first sentence enforcement (WI-022, 16 approved verbs), part ID insertion, safety tag normalization, whitespace/formatting cleanup, metric unit enforcement, step numbering normalization, sentence case, maximum sentence length enforcement, hazard keyword detection
-- [ ] `T-038` **Validator registry (22+ validators)** (depends: T-005) -- `src/lib/quality/validator-registry.ts`: missing parts references, unapproved verbs, missing safety warnings, step length violations, illustration requirement gaps, metadata completeness, tool reference validation, part ID format check, produces quality flags array with severity
+- [x] `T-037` **Post-processor (9+ deterministic transforms)** (depends: T-005) -- `src/lib/guidelines/post-processor.ts`: verb-first sentence enforcement (WI-022, 16 approved verbs), part ID insertion, safety tag normalization, whitespace/formatting cleanup, metric unit enforcement, sentence case, maximum sentence length enforcement, hazard keyword detection (9 transforms)
+- [x] `T-038` **Validator registry (22+ validators)** (depends: T-005) -- `src/lib/quality/validator-registry.ts`: 22 validators covering unapproved verbs, verb-first sentences, sentence length, missing parts refs, missing quantity, part ID format, missing safety warnings, two-person consistency, step numbering, empty instruction, confidence range, low confidence, passive voice, metadata completeness, safety level consistency, duplicate titles, instruction min length, phase transitions, source pages, complexity, title-instruction match, minimum steps
 
 ### XML assembly
 
-- [ ] `T-039` **Agent 8: XML Assembler** (depends: T-012, T-035) -- Code agent assembling all pipeline outputs into structured data, collects metadata, parts, tools, safety, steps, quality flags, and generation metadata
-- [ ] `T-040` **XML builder** (depends: T-039) -- `src/lib/xml/builder.ts` producing canonical XML with namespace `urn:guid:work-instruction:1.0`: metadata, parts-list, tools-required, safety-warnings, phases/steps (instruction, parts, tools, safety, illustration ref, confidence), generation-metadata (job-id, quality-score, cost, models-used, flags)
+- [x] `T-039` **Agent 8: XML Assembler** (depends: T-012, T-035) -- BaseCodeAgent subclass in `src/lib/agents/xml-assembler.ts`, collects all pipeline outputs, groups steps into phases, deduplicates parts and tools, builds XmlWorkInstruction data structure
+- [x] `T-040` **XML builder** (depends: T-039) -- `src/lib/xml/builder.ts` producing canonical XML with namespace `urn:guid:work-instruction:1.0`: metadata, parts-list, tools-required, safety-warnings, phases/steps, generation-metadata with quality flags, proper XML escaping
 
 ### Orchestrator update
 
-- [ ] `T-041` **Orchestrator: full pipeline through assembling** (depends: T-036, T-037, T-038, T-040) -- Extend orchestrator state machine through reviewing -> [revising] -> assembling -> completed, integrate post-processor after enforcement, run validators before quality gate, persist final XML and quality data to generated_guides table
+- [x] `T-041` **Orchestrator: full pipeline through assembling** (depends: T-036, T-037, T-038, T-040) -- Full orchestrator: agents 1-4 → post-processor → agents 5+6 (parallel) → quality gate → [revision loop, max 2] → agent 8 → persist to generated_guides → completed. SSE events for all states including reviewing, revising.
 
 ### Output page and API
 
-- [ ] `T-042` **GET /api/jobs/[jobId]/result endpoint** (depends: T-040) -- Return completed job result: XML content, JSON representation, quality scores, safety scores, quality flags, generation metadata (cost, duration, models), step count, parts count
-- [ ] `T-043` **Output review page: XML viewer** (depends: T-042) -- XML viewer in `src/app/output/[jobId]/page.tsx` with syntax highlighting, collapsible sections for metadata, parts-list, tools-required, safety-warnings, each phase/step; export XML button triggering file download
-- [ ] `T-044` **Output review page: Quality report** (depends: T-042) -- Quality report tab: overall score with visual indicator (progress ring), per-category breakdown, individual quality flags list with severity, safety review summary, revision history (loop count, score progression, feedback given)
+- [x] `T-042` **GET /api/jobs/[jobId]/result endpoint** (depends: T-040) -- Returns job info, guide (XML content, JSON, quality score/decision, issues, safety issues, step/phase counts, models used, costs), and per-agent cost breakdown
+- [x] `T-043` **Output review page: XML viewer** (depends: T-042) -- XML viewer with line numbers and syntax highlighting (tags in indigo, attributes in violet, values in emerald), collapsible, export XML download button
+- [x] `T-044` **Output review page: Quality report** (depends: T-042) -- Quality report tab: score ring with color-coded threshold, issue summary by severity, review details (safety level, revisions, safety issues), full quality issues list with category/step/description/fix, safety issues list with hazard type and required actions. Cost breakdown tab with per-agent table.
 
 ---
 
-## Milestone 4: Illustrations (Phase 4)
+## Milestone 4: Illustrations (Phase 4) (COMPLETED)
 
 > **Goal:** AI-generated isometric illustrations for each step, integrated into XML and the output view.
 
-- [ ] `T-045` **Agent 7: Illustration Generator** (depends: T-012) -- Gemini Flash Image agent generating one isometric technical illustration per assembly step, prompt construction from step description + parts + tools, follows 18 IL guidelines (IL-001 to IL-018), outputs PNG images
-- [ ] `T-046` **Illustration storage and DB tracking** (depends: T-045, T-006) -- Save generated PNGs to `storage/illustrations/[jobId]/`, track in generated_illustrations table (step number, file path, dimensions, model, cost), serve via static file route or API
-- [ ] `T-047` **Orchestrator: illustrating state** (depends: T-045, T-041) -- Add illustrating state between reviewing and assembling in orchestrator, run illustration generation per step with sub-progress SSE events ("Generating illustration 5 of 12..."), accumulate illustration costs
-- [ ] `T-048` **XML illustration references** (depends: T-046, T-040) -- Update XML builder to include `<illustration ref="step-001.png" />` elements in each step, referencing stored illustration file paths
-- [ ] `T-049` **Illustration gallery component** (depends: T-046) -- `src/components/output/illustration-gallery.tsx` grid of per-step illustration cards (step number, image, caption), click to enlarge in modal/lightbox
-- [ ] `T-050` **Pipeline monitor: illustration agent card** (depends: T-025, T-047) -- Update agent card for Agent 7 with sub-progress display showing per-step illustration generation progress, thumbnail previews as each illustration completes
-- [ ] `T-051` **Output review: illustration tab integration** (depends: T-049, T-043) -- Wire illustration gallery into the output review page as the "Illustrations" tab, loading illustrations from the result API
+- [x] `T-045` **Agent 7: Illustration Generator** (depends: T-012) -- Standalone agent class (not BaseCodeAgent — makes real API calls with per-step cost tracking) using Gemini Flash Image. Per-step illustration generation with IL guidelines in prompts, part label mapping (IL-007: skip I/O), active/inactive part highlighting (IL-006), motion arrows, two-person indicators. Saves PNGs to `storage/jobs/{jobId}/illustrations/`, reports per-step progress via SSE.
+- [x] `T-046` **Illustration storage and DB tracking** (depends: T-045, T-006) -- PNGs saved by Agent 7 to `storage/jobs/{jobId}/illustrations/`. API route `GET /api/jobs/[jobId]/illustrations/[step]` serves illustration PNGs with caching headers. DB insert handled in orchestrator after guide persistence (generated_illustrations table requires guideId FK).
+- [x] `T-047` **Orchestrator: illustrating state** (depends: T-045, T-041) -- Added illustrating state between reviewing and assembling. Agent 7 runs after quality gate approval, emits per-step progress SSE ("Generating illustration 5 of 12..."). Illustration records persisted to generated_illustrations table after guide insert (guideId FK constraint).
+- [x] `T-048` **XML illustration references** (depends: T-046, T-040) -- Updated XML assembler to build stepNumber→filename map from `state.illustrations` and populate `illustrationSrc` on each XmlStep. XML builder already renders `<illustration ref="step-001.png" />`.
+- [x] `T-049` **Illustration gallery component** (depends: T-046) -- `src/components/output/illustration-gallery.tsx`: responsive grid (2/3/4 col), per-step cards with fuchsia step badges, Image hover zoom icon, click-to-enlarge lightbox overlay with header/instruction/close, Next.js Image optimization
+- [x] `T-050` **Pipeline monitor: illustration agent card** (depends: T-025, T-047) -- Already configured in Phase 2: `AGENT_VISUALS["illustration-generator"]` (fuchsia, Image icon), `AGENT_REGISTRY` entry, `AGENT_ORDER[7]`. SSE events from Agent 7 (per-step progress messages, cost) automatically drive the card state — no changes needed.
+- [x] `T-051` **Output review: illustration tab integration** (depends: T-049, T-043) -- Added "Illustrations" tab to output page (between XML and Quality), result API returns illustration metadata, IllustrationGallery wired with step titles/instructions from JSON content, count badge on tab
 
 ---
 

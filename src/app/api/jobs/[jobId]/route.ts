@@ -26,23 +26,9 @@ export async function GET(
       );
     }
 
-    // Get agent execution summaries
+    // Get agent execution details (including prompt/response for detail drawer)
     const executions = db
-      .select({
-        id: agentExecutions.id,
-        agentName: agentExecutions.agentName,
-        model: agentExecutions.model,
-        wasEscalation: agentExecutions.wasEscalation,
-        inputTokens: agentExecutions.inputTokens,
-        outputTokens: agentExecutions.outputTokens,
-        costUsd: agentExecutions.costUsd,
-        startedAt: agentExecutions.startedAt,
-        completedAt: agentExecutions.completedAt,
-        durationMs: agentExecutions.durationMs,
-        status: agentExecutions.status,
-        errorMessage: agentExecutions.errorMessage,
-        executionOrder: agentExecutions.executionOrder,
-      })
+      .select()
       .from(agentExecutions)
       .where(eq(agentExecutions.jobId, jobId))
       .all();
