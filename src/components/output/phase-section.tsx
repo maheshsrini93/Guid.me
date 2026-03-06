@@ -10,7 +10,6 @@ interface PhaseSectionProps {
   partsMap: Map<string, XmlPart>;
   illustrationSteps: Set<number>;
   showInlineIllustrations: boolean;
-  onStepHover: (stepNumber: number | null) => void;
 }
 
 export function PhaseSection({
@@ -20,7 +19,6 @@ export function PhaseSection({
   partsMap,
   illustrationSteps,
   showInlineIllustrations,
-  onStepHover,
 }: PhaseSectionProps) {
   return (
     <section id={`phase-${phaseIndex}`} className="space-y-4">
@@ -32,16 +30,14 @@ export function PhaseSection({
       </h3>
 
       <div className="space-y-3">
-        {phase.steps.map((step) => (
+        {phase.steps.map((step, stepIndex) => (
           <StepCard
-            key={step.number}
+            key={`phase-${phaseIndex}-step-${step.number}-${stepIndex}`}
             step={step}
             jobId={jobId}
             partsMap={partsMap}
             hasIllustration={illustrationSteps.has(step.number)}
             showInlineIllustration={showInlineIllustrations}
-            onHoverStart={() => onStepHover(step.number)}
-            onHoverEnd={() => onStepHover(null)}
           />
         ))}
       </div>

@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { X, ZoomIn, Image as ImageIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { XmlStep } from "@/types/xml";
 
 interface InstructionIllustrationProps {
@@ -17,17 +16,7 @@ export function InstructionIllustration({
   activeStep,
   hasIllustration,
 }: InstructionIllustrationProps) {
-  const [loaded, setLoaded] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [prevStepNumber, setPrevStepNumber] = useState<number | null>(null);
-
-  // Reset loaded state when step changes
-  if (activeStep?.number !== prevStepNumber) {
-    setPrevStepNumber(activeStep?.number ?? null);
-    setLoaded(false);
-  }
-
-  const handleLoad = useCallback(() => setLoaded(true), []);
 
   if (!activeStep) {
     return (
@@ -55,32 +44,13 @@ export function InstructionIllustration({
       <div className="space-y-3">
         <StepLabel step={activeStep} />
 
-        {/* Image container */}
-        <div className="relative border rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-800/50 group cursor-pointer"
-          onClick={() => setLightboxOpen(true)}
-        >
-          <div className="relative aspect-square">
-            {/* Shimmer */}
-            {!loaded && (
-              <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700">
-                <div className="flex items-center justify-center h-full">
-                  <ImageIcon className="w-8 h-8 text-slate-300 dark:text-slate-600" />
-                </div>
-              </div>
-            )}
-            <Image
-              src={`/api/jobs/${jobId}/illustrations/${activeStep.number}`}
-              alt={`Step ${activeStep.number} illustration`}
-              fill
-              className={cn("object-contain p-3 transition-opacity", loaded ? "opacity-100" : "opacity-0")}
-              sizes="288px"
-              onLoad={handleLoad}
-            />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-              <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-80 transition-opacity drop-shadow-lg" />
-            </div>
-          </div>
-        </div>
+        {/* Key by step number so the preview remounts when the active step changes */}
+        <StepImage
+          key={activeStep.number}
+          jobId={jobId}
+          step={activeStep}
+          onOpenLightbox={() => setLightboxOpen(true)}
+        />
 
         <p className="text-xs text-muted-foreground line-clamp-2">{activeStep.instruction}</p>
       </div>
@@ -126,6 +96,37 @@ export function InstructionIllustration({
         </div>
       )}
     </>
+  );
+}
+
+/** Inner component keyed by step number to reset image internals on step change. */
+function StepImage({
+  jobId,
+  step,
+  onOpenLightbox,
+}: {
+  jobId: string;
+  step: XmlStep;
+  onOpenLightbox: () => void;
+}) {
+  return (
+    <div
+      className="relative border rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-800/50 group cursor-pointer"
+      onClick={onOpenLightbox}
+    >
+      <div className="relative aspect-square">
+        <Image
+          src={`/api/jobs/${jobId}/illustrations/${step.number}`}
+          alt={`Step ${step.number} illustration`}
+          fill
+          className="object-contain p-3"
+          sizes="288px"
+        />
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+          <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-80 transition-opacity drop-shadow-lg" />
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -85,8 +85,8 @@ export function ProcedureHeader({ data }: ProcedureHeaderProps) {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {partsList.map((p) => (
-                  <tr key={p.id}>
+                {partsList.map((p, idx) => (
+                  <tr key={`${p.id}-${idx}`}>
                     <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground">{p.id}</td>
                     <td className="px-3 py-1.5">{p.name}</td>
                     <td className="px-3 py-1.5 text-right font-mono">{p.quantity}</td>
@@ -106,8 +106,8 @@ export function ProcedureHeader({ data }: ProcedureHeaderProps) {
               </span>
             </div>
             <div className="divide-y">
-              {toolsRequired.map((t) => (
-                <div key={t.name} className="px-3 py-2 flex items-center justify-between text-sm">
+              {toolsRequired.map((t, idx) => (
+                <div key={`${t.name}-${idx}`} className="px-3 py-2 flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2">
                     <Wrench className="w-3.5 h-3.5 text-muted-foreground" />
                     {t.name}

@@ -10,7 +10,6 @@ interface InstructionContentProps {
   partsMap: Map<string, XmlPart>;
   illustrationSteps: Set<number>;
   showInlineIllustrations: boolean;
-  onStepHover: (stepNumber: number | null) => void;
 }
 
 export function InstructionContent({
@@ -19,7 +18,6 @@ export function InstructionContent({
   partsMap,
   illustrationSteps,
   showInlineIllustrations,
-  onStepHover,
 }: InstructionContentProps) {
   return (
     <div className="space-y-8">
@@ -36,7 +34,6 @@ export function InstructionContent({
           partsMap={partsMap}
           illustrationSteps={illustrationSteps}
           showInlineIllustrations={showInlineIllustrations}
-          onStepHover={onStepHover}
         />
       ))}
     </div>

@@ -79,6 +79,9 @@ export async function GET(
       });
     }
 
+    const parsedJsonContent = guide.jsonContent ? JSON.parse(guide.jsonContent) : null;
+    const normalizedJsonContent = normalizeInstructionContent(parsedJsonContent);
+
     return NextResponse.json({
       job: {
         id: job.id,
@@ -92,7 +95,7 @@ export async function GET(
       },
       guide: {
         xmlContent: guide.xmlContent,
-        jsonContent: guide.jsonContent ? JSON.parse(guide.jsonContent) : null,
+        jsonContent: normalizedJsonContent,
         qualityScore: guide.qualityScore,
         qualityDecision: guide.qualityDecision,
         qualityIssues: guide.qualityIssues ? JSON.parse(guide.qualityIssues) : [],
@@ -125,6 +128,72 @@ export async function GET(
       { status: 500 },
     );
   }
+}
+
+type PartRef = {
+  id: string;
+  quantity: number;
+};
+
+function mergePartRefs(parts: unknown): unknown {
+  if (!Array.isArray(parts)) return parts;
+
+  const merged = new Map<string, PartRef>();
+
+  for (const entry of parts) {
+    if (!entry || typeof entry !== "object") continue;
+
+    const part = entry as { id?: unknown; quantity?: unknown };
+    const id = typeof part.id === "string" ? part.id : String(part.id ?? "N/A");
+    const quantity = typeof part.quantity === "number" && Number.isFinite(part.quantity)
+      ? part.quantity
+      : 1;
+
+    const existing = merged.get(id);
+    if (existing) {
+      existing.quantity += quantity;
+      continue;
+    }
+
+    merged.set(id, { id, quantity });
+  }
+
+  return Array.from(merged.values());
+}
+
+function normalizeInstructionContent(content: unknown): unknown {
+  if (!content || typeof content !== "object") return content;
+
+  const instruction = content as {
+    phases?: Array<{
+      steps?: Array<{
+        parts?: unknown;
+      }>;
+    }>;
+  };
+
+  if (!Array.isArray(instruction.phases)) return content;
+
+  return {
+    ...instruction,
+    phases: instruction.phases.map((phase) => {
+      if (!phase || typeof phase !== "object" || !Array.isArray(phase.steps)) {
+        return phase;
+      }
+
+      return {
+        ...phase,
+        steps: phase.steps.map((step) => {
+          if (!step || typeof step !== "object") return step;
+
+          return {
+            ...step,
+            parts: mergePartRefs(step.parts),
+          };
+        }),
+      };
+    }),
+  };
 }
 
 /** Strip extension and special characters from a filename for use in downloads */

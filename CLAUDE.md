@@ -77,6 +77,7 @@ pnpm db:generate      # Generate Drizzle migrations
 | `GET` | `/api/jobs/[jobId]/sse` | SSE event stream |
 | `GET` | `/api/jobs/[jobId]/result` | Get completed result |
 | `POST` | `/api/jobs/[jobId]/cancel` | Cancel running job |
+| `POST` | `/api/jobs/[jobId]/retry` | Retry failed job from last checkpoint |
 
 ## Database (Drizzle + SQLite)
 

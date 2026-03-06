@@ -22,6 +22,9 @@ function isRetryable(error: unknown): boolean {
     if (msg.includes("401") || msg.includes("unauthorized")) return false;
     if (msg.includes("403") || msg.includes("forbidden")) return false;
 
+    // Non-retryable: output truncated (retrying won't help, need bigger limit)
+    if (msg.includes("max_tokens") || msg.includes("response truncated")) return false;
+
     // Retryable status codes
     if (msg.includes("429") || msg.includes("rate limit")) return true;
     if (msg.includes("500") || msg.includes("internal server")) return true;
@@ -92,6 +95,11 @@ export async function withRetry<T>(
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
 
+      console.error(
+        `[${agentName}] Attempt ${attempt + 1}/${config.maxAttempts} failed:`,
+        lastError.message,
+      );
+
       // Don't retry non-retryable errors
       if (!isRetryable(error)) {
         throw lastError;
@@ -100,6 +108,7 @@ export async function withRetry<T>(
       // Don't wait after the last attempt
       if (attempt < config.maxAttempts - 1) {
         const delay = calculateDelay(attempt, config);
+        console.log(`[${agentName}] Retrying in ${Math.round(delay)}ms...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }

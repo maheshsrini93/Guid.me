@@ -34,9 +34,9 @@ export function IllustrationGallery({
   return (
     <>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {illustrations.map((il) => (
+        {illustrations.map((il, idx) => (
           <IllustrationCard
-            key={il.stepNumber}
+            key={`step-${il.stepNumber}-${idx}`}
             jobId={jobId}
             illustration={il}
             onSelect={() => setSelected(il)}

@@ -6,11 +6,13 @@ import type { XmlWorkInstruction } from "@/types/xml";
 interface InstructionTocProps {
   data: XmlWorkInstruction;
   activeStepNumber: number | null;
+  onNavigate?: () => void;
 }
 
-export function InstructionToc({ data, activeStepNumber }: InstructionTocProps) {
+export function InstructionToc({ data, activeStepNumber, onNavigate }: InstructionTocProps) {
   function scrollTo(id: string) {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    onNavigate?.();
   }
 
   return (
@@ -44,9 +46,9 @@ export function InstructionToc({ data, activeStepNumber }: InstructionTocProps) 
               {phase.name}
             </button>
             <div className="mt-1 space-y-0.5">
-              {phase.steps.map((step) => (
+              {phase.steps.map((step, si) => (
                 <button
-                  key={step.number}
+                  key={`phase-${pi}-step-${step.number}-${si}`}
                   onClick={() => scrollTo(`step-${step.number}`)}
                   className={cn(
                     "w-full text-left pl-4 pr-2 py-1 text-sm rounded-md transition-colors",

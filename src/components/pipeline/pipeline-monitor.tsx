@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, XCircle, Clock } from "lucide-react";
+import { ArrowLeft, ExternalLink, XCircle, Clock, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useEventSource, AGENT_REGISTRY } from "@/hooks/use-event-source";
@@ -31,6 +31,7 @@ export function PipelineMonitor({ jobId }: PipelineMonitorProps) {
   const [elapsed, setElapsed] = useState("0:00");
   const [startTime] = useState(() => Date.now());
   const [cancelling, setCancelling] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   // Elapsed timer
   useEffect(() => {
@@ -62,6 +63,21 @@ export function PipelineMonitor({ jobId }: PipelineMonitorProps) {
       // ignore
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const handleRetry = async () => {
+    setRetrying(true);
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/retry`, { method: "POST" });
+      if (res.ok) {
+        // Force page reload to reconnect SSE with fresh state
+        window.location.reload();
+      }
+    } catch {
+      // ignore
+    } finally {
+      setRetrying(false);
     }
   };
 
@@ -177,10 +193,26 @@ export function PipelineMonitor({ jobId }: PipelineMonitorProps) {
 
         {/* Error banner */}
         {state.status === "failed" && state.error && (
-          <div className="mb-6 rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20 p-4">
-            <p className="text-sm text-rose-700 dark:text-rose-300">
-              {state.error}
-            </p>
+          <div className="mb-6 rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-100 dark:bg-rose-900/30 p-4 flex items-start gap-3">
+            <XCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-rose-900 dark:text-rose-100">
+                Pipeline failed
+              </p>
+              <p className="text-sm text-rose-800 dark:text-rose-200 mt-1">
+                {state.error}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRetry}
+              disabled={retrying}
+              className="shrink-0 border-rose-300 dark:border-rose-600 text-rose-700 dark:text-rose-300 hover:bg-rose-200 dark:hover:bg-rose-800"
+            >
+              <RotateCcw className={`w-4 h-4 mr-1.5 ${retrying ? "animate-spin" : ""}`} />
+              {retrying ? "Retrying..." : "Retry"}
+            </Button>
           </div>
         )}
 

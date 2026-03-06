@@ -16,14 +16,14 @@ export const guidelineEnforcerConfig: AgentConfig<EnforcedGuide> = {
 
   generationOptions: {
     temperature: 0.2, // Low temperature for deterministic compliance
-    maxOutputTokens: 16384,
+    maxOutputTokens: 65536,
   },
 
   responseSchema: guidelineEnforcerSchema,
 
   retryConfig: {
     maxAttempts: 3,
-    timeoutMs: 60_000,
+    timeoutMs: 120_000,
   },
 
   invocationMode: "single",

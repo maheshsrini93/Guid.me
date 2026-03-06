@@ -6,6 +6,31 @@ Format: Each entry includes a date, category, and description of the change.
 
 ---
 
+## 2026-03-05
+
+### Added — Pipeline Retry / Resume from Failure Point (T-069 through T-072)
+
+**Trigger:** Implemented via `/project-docs:implement`
+
+**Tasks completed:** T-069, T-070, T-071, T-072
+
+**New files:**
+- **`src/app/api/jobs/[jobId]/retry/route.ts`** — POST endpoint to retry a failed pipeline from last checkpoint
+
+**Modified files:**
+- **`src/lib/orchestrator/orchestrator.ts`** — Added `resumePipeline()` that reads completed `agent_executions` from DB, reconstructs `PipelineState` from `structuredOutput`, emits SSE events for completed agents, skips to the failed agent, and continues. Handles cleanup of previous `generated_guides`/`generated_illustrations` on re-runs.
+- **`src/components/pipeline/pipeline-monitor.tsx`** — Added Retry button (RotateCcw icon) in the error banner for failed pipelines. Calls `/api/jobs/[jobId]/retry` and reloads the page for fresh SSE connection.
+
+**How it works:**
+1. When a pipeline fails, completed agents' outputs are already stored in `agent_executions.structuredOutput`
+2. On retry, `resumePipeline()` reads these records, reconstructs the in-memory `PipelineState`, and determines the resume point
+3. SSE events are emitted for completed agents so the UI shows them as already done
+4. The pipeline continues from the failed agent, saving API cost and time
+
+**Build:** `pnpm build` succeeds
+
+---
+
 ## 2026-03-04
 
 ### Added — Rich Work Instruction Viewer (T-066 through T-068)

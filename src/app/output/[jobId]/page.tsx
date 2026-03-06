@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, memo } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -298,24 +298,19 @@ export default function OutputReviewPage() {
 
         {/* Tab content */}
         <div className="mt-6">
-          {activeTab === "instruction" && (() => {
-            const jsonContent = guide.jsonContent as XmlWorkInstruction | null;
-            if (!jsonContent) {
-              return (
-                <div className="text-center py-12 text-muted-foreground text-sm">
-                  No structured content available. View the XML tab instead.
-                </div>
-              );
-            }
-            const illustrationSteps = new Set(illustrations.map((il) => il.stepNumber));
-            return (
-              <InstructionViewer
-                data={jsonContent}
+          {activeTab === "instruction" && (
+            guide.jsonContent ? (
+              <MemoizedInstructionTab
+                jsonContent={guide.jsonContent as XmlWorkInstruction}
                 jobId={jobId}
-                illustrationSteps={illustrationSteps}
+                illustrations={illustrations}
               />
-            );
-          })()}
+            ) : (
+              <div className="text-center py-12 text-muted-foreground text-sm">
+                No structured content available. View the XML tab instead.
+              </div>
+            )
+          )}
           {activeTab === "xml" && <XmlViewer xml={guide.xmlContent} />}
           {activeTab === "illustrations" && (
             <IllustrationGallery
@@ -768,9 +763,9 @@ function CostBreakdown({
       <div className="bg-white dark:bg-slate-900 border rounded-lg p-4 shadow-sm">
         <p className="text-sm font-medium mb-2">Models Used</p>
         <div className="flex flex-wrap gap-2">
-          {modelsUsed.map((model) => (
+          {modelsUsed.map((model, idx) => (
             <span
-              key={model}
+              key={`${model}-${idx}`}
               className="text-xs font-mono bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded"
             >
               {model}
@@ -788,3 +783,30 @@ function formatAgentName(name: string): string {
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
 }
+
+// ============================================================
+// Memoized Instruction Tab (prevents infinite re-render loop)
+// ============================================================
+
+const MemoizedInstructionTab = memo(function MemoizedInstructionTab({
+  jsonContent,
+  jobId,
+  illustrations,
+}: {
+  jsonContent: XmlWorkInstruction;
+  jobId: string;
+  illustrations: IllustrationEntry[];
+}) {
+  const illustrationSteps = useMemo(
+    () => new Set(illustrations.map((il) => il.stepNumber)),
+    [illustrations],
+  );
+
+  return (
+    <InstructionViewer
+      data={jsonContent}
+      jobId={jobId}
+      illustrationSteps={illustrationSteps}
+    />
+  );
+});

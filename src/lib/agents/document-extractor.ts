@@ -1,6 +1,6 @@
 import { execFile } from "child_process";
 import { promisify } from "util";
-import { readdir, stat } from "fs/promises";
+import { mkdir, readdir, stat } from "fs/promises";
 import path from "path";
 import mammoth from "mammoth";
 import { saveFile, getPagesDir } from "@/lib/utils/file-storage";
@@ -85,6 +85,7 @@ export class DocumentExtractor extends BaseCodeAgent<
     startTime: number,
   ): Promise<ExtractedDocument> {
     const pagesDir = getPagesDir(input.jobId);
+    await mkdir(pagesDir, { recursive: true });
 
     // Run pdftoppm to convert PDF pages to PNG images at 300 DPI
     const outputPrefix = path.join(pagesDir, "page");
@@ -141,6 +142,7 @@ export class DocumentExtractor extends BaseCodeAgent<
     startTime: number,
   ): Promise<ExtractedDocument> {
     const pagesDir = getPagesDir(input.jobId);
+    await mkdir(pagesDir, { recursive: true });
 
     context.reportProgress(25, "Converting DOCX to HTML");
 

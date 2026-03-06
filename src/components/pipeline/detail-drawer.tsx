@@ -236,13 +236,23 @@ export function DetailDrawer({
 
           {/* Error Message */}
           {(agent.status === "error" || execution?.errorMessage) && (
-            <div className="rounded-md border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20 p-3">
-              <div className="text-xs font-medium text-rose-600 dark:text-rose-400 mb-1">
+            <div className="rounded-md border border-rose-300 dark:border-rose-700 bg-rose-100 dark:bg-rose-900/30 p-3">
+              <div className="text-xs font-semibold text-rose-800 dark:text-rose-200 mb-1">
                 Error
               </div>
-              <p className="text-xs text-rose-700 dark:text-rose-300">
-                {execution?.errorMessage || agent.message}
+              <p className="text-sm text-rose-900 dark:text-rose-100">
+                {agent.message || execution?.errorMessage}
               </p>
+              {execution?.errorMessage && agent.message && execution.errorMessage !== agent.message && (
+                <details className="mt-2">
+                  <summary className="text-xs text-rose-600 dark:text-rose-400 cursor-pointer">
+                    Technical details
+                  </summary>
+                  <pre className="mt-1 text-xs font-mono text-rose-700 dark:text-rose-300 whitespace-pre-wrap break-words max-h-32 overflow-y-auto">
+                    {execution.errorMessage}
+                  </pre>
+                </details>
+              )}
             </div>
           )}
 

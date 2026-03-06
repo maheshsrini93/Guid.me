@@ -134,6 +134,16 @@ export async function generateTextWithSchema<T>(
     generationConfig,
   });
 
+  // Check if output was truncated (MAX_TOKENS finish reason)
+  const finishReason = result.response.candidates?.[0]?.finishReason;
+  if (finishReason === "MAX_TOKENS") {
+    const { inputTokens, outputTokens } = extractTokenCounts(result);
+    throw new Error(
+      `Response truncated (MAX_TOKENS): generated ${outputTokens} output tokens. ` +
+      `Increase maxOutputTokens or reduce input size.`
+    );
+  }
+
   const text = result.response.text();
   const parsed = JSON.parse(text) as T;
   const { inputTokens, outputTokens } = extractTokenCounts(result);
@@ -201,24 +211,46 @@ export async function generateTextWithVision(
 
 /**
  * Generate an image using Gemini's image generation model.
+ * Uses the REST API directly since the @google/generative-ai SDK
+ * doesn't support responseModalities needed for image generation.
  */
 export async function generateImage(
   prompt: string,
   options?: { model?: string },
 ): Promise<ImageGenerationResult> {
-  const client = getClient();
   const model = options?.model ?? config.geminiImageModel;
-  const generativeModel = client.getGenerativeModel({ model });
+  const apiKey = config.geminiApiKey;
 
-  const result = await generativeModel.generateContent({
+  if (!apiKey) {
+    throw new Error(
+      "GEMINI_API_KEY is not set. Set it in .env.local or enable DEMO_MODE.",
+    );
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  const body = {
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     generationConfig: {
-      responseMimeType: "image/png",
+      responseModalities: ["IMAGE"],
     },
+  };
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
   });
 
-  const response = result.response;
-  const parts = response.candidates?.[0]?.content?.parts;
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(
+      `[GoogleGenerativeAI Error]: Error fetching from ${url.split("?")[0]}: [${res.status} ${res.statusText}] ${errorText}`,
+    );
+  }
+
+  const data = await res.json();
+  const parts = data.candidates?.[0]?.content?.parts;
 
   if (!parts || parts.length === 0) {
     throw new Error("No image generated in response");

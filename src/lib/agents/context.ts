@@ -3,7 +3,19 @@ import { db } from "@/lib/db";
 import { agentExecutions, jobs } from "@/lib/db/schema";
 import { pipelineEvents } from "@/lib/orchestrator/event-emitter";
 import type { PipelineState, AgentCostRecord } from "@/types/pipeline";
-import type { AgentContext, AgentExecutionRecord } from "./types";
+import type { AgentContext, AgentExecutionRecord, AgentName } from "./types";
+
+/** Map pipeline status to agent name for progress reporting */
+const STATUS_TO_AGENT: Record<string, AgentName> = {
+  extracting: "document-extractor",
+  analyzing: "vision-analyzer",
+  composing: "instruction-composer",
+  enforcing: "guideline-enforcer",
+  reviewing: "quality-reviewer",
+  revising: "guideline-enforcer",
+  illustrating: "illustration-generator",
+  assembling: "xml-assembler",
+};
 
 /**
  * Create an AgentContext that bridges both config-driven and code agents
@@ -30,8 +42,9 @@ export function createAgentContext(
     },
 
     reportProgress(progress: number, message: string) {
+      const agentName = STATUS_TO_AGENT[state.status] ?? state.status;
       pipelineEvents.emit(jobId, "agent:progress", {
-        agent: state.status,
+        agent: agentName,
         progress,
         message,
       });

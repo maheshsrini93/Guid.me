@@ -16,14 +16,14 @@ export const instructionComposerConfig: AgentConfig<ComposedGuide> = {
 
   generationOptions: {
     temperature: 0.5,
-    maxOutputTokens: 16384,
+    maxOutputTokens: 65536,
   },
 
   responseSchema: instructionComposerSchema,
 
   retryConfig: {
     maxAttempts: 3,
-    timeoutMs: 60_000,
+    timeoutMs: 120_000,
   },
 
   invocationMode: "single",

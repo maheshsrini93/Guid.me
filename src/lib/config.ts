@@ -6,7 +6,7 @@ export const config = {
   geminiProModel: process.env.GEMINI_PRO_MODEL ?? "gemini-2.5-pro",
   geminiImageModel:
     process.env.GEMINI_IMAGE_MODEL ??
-    "gemini-2.5-flash-preview-image-generation",
+    "gemini-2.5-flash-image",
   qualityThreshold: parseInt(process.env.QUALITY_THRESHOLD ?? "85", 10),
   maxRevisionLoops: parseInt(process.env.MAX_REVISION_LOOPS ?? "2", 10),
   maxFileSizeMb: parseInt(process.env.MAX_FILE_SIZE_MB ?? "50", 10),

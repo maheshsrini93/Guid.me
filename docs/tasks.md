@@ -193,6 +193,15 @@ Task IDs are sequential (`T-001` through `T-069`). Every task declares its depen
 - [x] `T-067` **Output page integration** (depends: T-066) -- Added "Work Instruction" as default tab on output page, renders InstructionViewer from jsonContent, existing XML/Illustrations/Quality/Cost tabs preserved
 - [x] `T-068` **Documentation updates** (depends: T-067) -- Updated changelog, tasks, master-plan with new viewer feature
 
+## Pipeline Retry / Resume (Post-Phase 5)
+
+> **Goal:** Allow retrying a failed pipeline from the last successful agent instead of re-running from scratch.
+
+- [x] `T-069` **Pipeline resume orchestrator** (depends: T-041) -- `resumePipeline()` reads completed `agent_executions` from DB, reconstructs `PipelineState` from `structuredOutput`, emits SSE events for completed agents, resumes from the failure point
+- [x] `T-070` **Retry API endpoint** (depends: T-069) -- `POST /api/jobs/[jobId]/retry` validates job is failed, calls `resumePipeline()`
+- [x] `T-071` **Retry button in pipeline monitor** (depends: T-070, T-028) -- Retry button in error banner, calls retry API, reloads page for fresh SSE connection
+- [x] `T-072` **Cleanup on retry** (depends: T-069) -- Deletes existing `generated_guides` and `generated_illustrations` before re-persisting on successful retry
+
 ---
 
 ## Dependency Graph Summary

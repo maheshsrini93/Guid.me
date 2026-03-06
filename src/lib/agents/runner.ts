@@ -128,7 +128,11 @@ export async function runConfigAgent<TOutput>(
   } catch (error) {
     const completedAt = new Date();
     const durationMs = completedAt.getTime() - startedAt.getTime();
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    let errorMessage = error instanceof Error ? error.message : String(error);
+    // Include root cause for exhausted errors
+    if (error instanceof Error && error.cause instanceof Error) {
+      errorMessage += ` (cause: ${error.cause.message})`;
+    }
 
     // Persist failed record
     await context.persistExecution({

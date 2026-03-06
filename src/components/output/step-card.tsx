@@ -12,8 +12,6 @@ interface StepCardProps {
   partsMap: Map<string, XmlPart>;
   hasIllustration: boolean;
   showInlineIllustration: boolean;
-  onHoverStart: () => void;
-  onHoverEnd: () => void;
 }
 
 export function StepCard({
@@ -22,16 +20,23 @@ export function StepCard({
   partsMap,
   hasIllustration,
   showInlineIllustration,
-  onHoverStart,
-  onHoverEnd,
 }: StepCardProps) {
+  const mergedParts = step.parts.reduce<Array<{ id: string; quantity: number }>>((acc, partRef) => {
+    const existing = acc.find((item) => item.id === partRef.id);
+    if (existing) {
+      existing.quantity += partRef.quantity;
+      return acc;
+    }
+
+    acc.push({ id: partRef.id, quantity: partRef.quantity });
+    return acc;
+  }, []);
+
   return (
     <div
       id={`step-${step.number}`}
       data-step-number={step.number}
       className="group rounded-lg border bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition-shadow p-4"
-      onMouseEnter={onHoverStart}
-      onMouseLeave={onHoverEnd}
     >
       <div className="flex items-start gap-3">
         {/* Step number badge */}
@@ -47,17 +52,18 @@ export function StepCard({
           <p className="text-sm text-muted-foreground leading-relaxed">{step.instruction}</p>
 
           {/* Parts badges */}
-          {step.parts.length > 0 && (
+          {mergedParts.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
-              {step.parts.map((p) => {
-                const part = partsMap.get(p.id);
+              {mergedParts.map((partRef, idx) => {
+                const part = partsMap.get(partRef.id);
+                const partKey = `step-${step.number}-part-${idx}-${String(partRef.id ?? "unknown")}`;
                 return (
                   <span
-                    key={p.id}
+                    key={partKey}
                     className="inline-flex items-center gap-1 text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded"
                   >
-                    {part?.name ?? p.id}
-                    {p.quantity > 1 && <span className="font-mono">&times;{p.quantity}</span>}
+                    {part?.name ?? partRef.id}
+                    {partRef.quantity > 1 && <span className="font-mono">&times;{partRef.quantity}</span>}
                   </span>
                 );
               })}

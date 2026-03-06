@@ -203,10 +203,10 @@ export function AgentCard({ agent, onClick }: AgentCardProps) {
       {agent.message && agent.status !== "idle" && (
         <p
           className={cn(
-            "text-xs truncate",
+            "text-xs",
             agent.status === "error"
-              ? "text-rose-600 dark:text-rose-400"
-              : "text-muted-foreground",
+              ? "text-rose-700 dark:text-rose-300 line-clamp-2"
+              : "text-muted-foreground truncate",
           )}
         >
           {agent.message}

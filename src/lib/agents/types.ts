@@ -172,11 +172,18 @@ export function classifyError(error: unknown): string {
   }
   if (error instanceof AgentExhaustedError) {
     const cause = error.cause instanceof Error ? error.cause.message : "";
-    if (cause.includes("429") || cause.includes("rate limit")) {
+    const causeLower = cause.toLowerCase();
+    if (causeLower.includes("429") || causeLower.includes("rate limit")) {
       return `API rate limit reached after ${error.attempts} attempts. Try again in a few minutes.`;
     }
-    if (cause.includes("timeout") || cause.includes("abort")) {
+    if (causeLower.includes("timeout") || causeLower.includes("abort")) {
       return `Agent "${error.agentName}" timed out after ${error.attempts} attempts. The document may be too large.`;
+    }
+    if (causeLower.includes("quota") || causeLower.includes("billing")) {
+      return `API quota exceeded. Check your Gemini API billing and quota limits.`;
+    }
+    if (cause) {
+      return `Agent "${error.agentName}" failed after ${error.attempts} attempts: ${cause}`;
     }
     return `Agent "${error.agentName}" failed after ${error.attempts} attempts. Check your API key and try again.`;
   }
@@ -200,10 +207,16 @@ export function classifyError(error: unknown): string {
     if (msg.includes("json") && msg.includes("parse")) {
       return "Received malformed response from AI model. Try again.";
     }
+    if (msg.includes("response truncated") || msg.includes("max_tokens")) {
+      return "AI response was too large and got truncated. The document may have too many pages or steps.";
+    }
     if (msg.includes("no image") || msg.includes("no content")) {
       return "AI model returned empty response. Try again with a different document.";
     }
-    if (msg.includes("poppler") || msg.includes("pdftoppm")) {
+    if (msg.includes("poppler") || msg.includes("pdftoppm") || msg.includes("pdf extraction")) {
+      if (msg.includes("could not write") || msg.includes("enoent")) {
+        return "PDF extraction failed: output directory could not be created. Check storage permissions.";
+      }
       return "PDF extraction tool not found. Install poppler: brew install poppler";
     }
     return error.message;
