@@ -95,9 +95,9 @@ export function StepCard({
             </div>
           )}
 
-          {/* Inline illustration (mobile/tablet — hidden on lg where right panel shows) */}
+          {/* Inline illustration */}
           {showInlineIllustration && hasIllustration && (
-            <div className="mt-3 rounded-md overflow-hidden border bg-slate-50 dark:bg-slate-800 lg:hidden">
+            <div className="mt-3 rounded-md overflow-hidden border bg-slate-50 dark:bg-slate-800">
               <div className="relative aspect-[4/3]">
                 <Image
                   src={`/api/jobs/${jobId}/illustrations/${step.number}`}
