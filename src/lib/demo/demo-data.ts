@@ -26,6 +26,36 @@ export const DEMO_EXTRACTED_DOCUMENT: ExtractedDocument = {
     { pageNumber: 3, imagePath: "demo/page-003.png", width: 595, height: 842, mimeType: "image/png" },
     { pageNumber: 4, imagePath: "demo/page-004.png", width: 595, height: 842, mimeType: "image/png" },
   ],
+  doclingMarkdown: `# BJÖRKUDDEN Bookshelf Assembly
+
+## Parts List
+| Part | Name | Qty |
+|------|------|-----|
+| A | Side panel | 2 |
+| B | Top panel | 1 |
+| C | Bottom panel | 1 |
+| D | Shelf | 2 |
+| E | Back panel | 1 |
+| 101322 | Wooden dowel | 12 |
+| 101558 | Cam lock screw | 8 |
+| 101559 | Cam lock nut | 8 |
+| 100001 | Wall anchor kit | 1 |
+
+## Page 1 — Parts Inventory
+Overview of all components with quantities and part identifiers.
+
+## Page 2 — Steps 1-3: Frame Assembly
+Step 1: Insert wooden dowels (101322) into side panel (A) pre-drilled holes.
+Step 2: Attach bottom panel (C) to side panels using cam locks (101558 + 101559).
+Step 3: Attach top panel (B) to side panels using cam locks.
+
+## Page 3 — Steps 4-5: Shelves and Back Panel
+Step 4: Insert dowels and slide shelves (D) into position on side panels.
+Step 5: Attach back panel (E) using nails. Place assembly face-down.
+
+## Page 4 — Step 6: Wall Anchoring
+Step 6: Secure bookshelf to wall using wall anchor kit (100001). Two-person step.
+`,
   durationMs: 1200,
 };
 

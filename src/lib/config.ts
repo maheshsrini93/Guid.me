@@ -12,6 +12,7 @@ export const config = {
   maxFileSizeMb: parseInt(process.env.MAX_FILE_SIZE_MB ?? "50", 10),
   demoMode: process.env.DEMO_MODE === "true",
   logLevel: process.env.LOG_LEVEL ?? "info",
+  doclingPipeline: process.env.DOCLING_PIPELINE ?? "standard",
   /** Per-agent timeout in milliseconds (default 60s) */
   agentTimeoutMs: parseInt(process.env.AGENT_TIMEOUT_MS ?? "60000", 10),
 } as const;

@@ -24,6 +24,8 @@ export interface ExtractedDocument {
   pages: ExtractedPage[];
   /** Raw text content (if available from DOCX) */
   textContent?: string;
+  /** Full-document Markdown from Docling (cross-page context for Vision Analyzer) */
+  doclingMarkdown?: string;
   /** Extraction timing */
   durationMs: number;
 }

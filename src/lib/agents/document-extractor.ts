@@ -1,9 +1,10 @@
 import { execFile } from "child_process";
 import { promisify } from "util";
-import { mkdir, readdir, stat } from "fs/promises";
+import { mkdir, readdir, stat, copyFile, readFile as fsReadFile } from "fs/promises";
 import path from "path";
 import mammoth from "mammoth";
-import { saveFile, getPagesDir } from "@/lib/utils/file-storage";
+import { config } from "@/lib/config";
+import { saveFile, getPagesDir, getDoclingOutputDir } from "@/lib/utils/file-storage";
 import type { PipelineState } from "@/types/pipeline";
 import type {
   DocumentExtractorInput,
@@ -63,6 +64,16 @@ export class DocumentExtractor extends BaseCodeAgent<
     const startTime = Date.now();
     const filename = path.basename(input.filePath);
 
+    // Try Docling first (handles both PDF and DOCX)
+    if (await this.isDoclingAvailable()) {
+      try {
+        return await this.extractWithDocling(input, context, filename, startTime);
+      } catch (err) {
+        console.warn(`[DocumentExtractor] Docling failed, falling back to legacy: ${err}`);
+      }
+    }
+
+    // Legacy fallback
     if (input.mimeType === "application/pdf") {
       return this.extractPdf(input, context, filename, startTime);
     } else {
@@ -72,6 +83,148 @@ export class DocumentExtractor extends BaseCodeAgent<
 
   summarize(output: ExtractedDocument): string {
     return `Extracted ${output.pageCount} pages from ${output.filename} (${output.format})`;
+  }
+
+  // ============================================================
+  // Docling extraction (PDF + DOCX, with structured Markdown)
+  // ============================================================
+
+  private doclingAvailable: boolean | null = null;
+
+  private async isDoclingAvailable(): Promise<boolean> {
+    if (this.doclingAvailable !== null) return this.doclingAvailable;
+    try {
+      await execFileAsync("docling", ["--version"]);
+      this.doclingAvailable = true;
+    } catch {
+      this.doclingAvailable = false;
+    }
+    return this.doclingAvailable;
+  }
+
+  private async extractWithDocling(
+    input: DocumentExtractorInput,
+    context: AgentContext,
+    filename: string,
+    startTime: number,
+  ): Promise<ExtractedDocument> {
+    const pagesDir = getPagesDir(input.jobId);
+    const doclingOutDir = getDoclingOutputDir(input.jobId);
+    await mkdir(pagesDir, { recursive: true });
+    await mkdir(doclingOutDir, { recursive: true });
+
+    context.reportProgress(10, "Running Docling document extraction");
+
+    await execFileAsync("docling", [
+      input.filePath,
+      "--to", "md",
+      "--image-export-mode", "referenced",
+      "--pipeline", config.doclingPipeline,
+      "--output", doclingOutDir,
+    ], { timeout: 120_000 });
+
+    context.reportProgress(50, "Processing Docling output");
+
+    // Docling outputs into a subdirectory named after the input file stem
+    const stem = path.basename(input.filePath, path.extname(input.filePath));
+    const subDir = path.join(doclingOutDir, stem);
+    let actualOutDir: string;
+    try {
+      const s = await stat(subDir);
+      actualOutDir = s.isDirectory() ? subDir : doclingOutDir;
+    } catch {
+      actualOutDir = doclingOutDir;
+    }
+
+    // Read Markdown output
+    let doclingMarkdown: string | undefined;
+    try {
+      const allFiles = await readdir(actualOutDir);
+      const mdFile = allFiles.find((f) => f.endsWith(".md"));
+      if (mdFile) {
+        doclingMarkdown = await fsReadFile(path.join(actualOutDir, mdFile), "utf-8");
+      }
+    } catch {
+      // Markdown is optional context — not fatal
+    }
+
+    // Collect referenced images and copy to our pages directory
+    // Docling may output images in the main dir or an "images" subdirectory
+    const imageDirs = [actualOutDir];
+    try {
+      const imagesSubDir = path.join(actualOutDir, "images");
+      const s = await stat(imagesSubDir);
+      if (s.isDirectory()) imageDirs.push(imagesSubDir);
+    } catch {
+      // No images subdirectory
+    }
+
+    const imageFiles: string[] = [];
+    for (const dir of imageDirs) {
+      const files = await readdir(dir);
+      for (const f of files) {
+        if (/\.(png|jpe?g|tiff?|bmp|webp)$/i.test(f)) {
+          imageFiles.push(path.join(dir, f));
+        }
+      }
+    }
+    imageFiles.sort();
+
+    // If Docling produced no images, fall back to pdftoppm for images only
+    if (imageFiles.length === 0 && input.mimeType === "application/pdf") {
+      context.reportProgress(60, "No images from Docling, extracting pages with pdftoppm");
+      const outputPrefix = path.join(pagesDir, "page");
+      await execFileAsync("pdftoppm", ["-png", "-r", "300", input.filePath, outputPrefix]);
+
+      const pngFiles = (await readdir(pagesDir)).filter((f) => f.endsWith(".png")).sort();
+      const pages: ExtractedPage[] = [];
+      for (let i = 0; i < pngFiles.length; i++) {
+        const imagePath = path.join(pagesDir, pngFiles[i]);
+        const { width, height } = await this.getImageDimensions(imagePath);
+        pages.push({ pageNumber: i + 1, imagePath, width, height, mimeType: "image/png" });
+      }
+
+      return {
+        filename,
+        format: input.mimeType === "application/pdf" ? "pdf" : "docx",
+        pageCount: pages.length,
+        pages,
+        doclingMarkdown,
+        durationMs: Date.now() - startTime,
+      };
+    }
+
+    // Copy images to our standard pages directory
+    const pages: ExtractedPage[] = [];
+    for (let i = 0; i < imageFiles.length; i++) {
+      const destName = `page-${String(i + 1).padStart(2, "0")}.png`;
+      const destPath = path.join(pagesDir, destName);
+      await copyFile(imageFiles[i], destPath);
+      const { width, height } = await this.getImageDimensions(destPath);
+
+      pages.push({
+        pageNumber: i + 1,
+        imagePath: destPath,
+        width,
+        height,
+        mimeType: "image/png",
+      });
+
+      context.reportProgress(
+        50 + Math.round(((i + 1) / imageFiles.length) * 45),
+        `Processing page ${i + 1} of ${imageFiles.length}`,
+      );
+    }
+
+    const format = input.mimeType === "application/pdf" ? "pdf" : "docx";
+    return {
+      filename,
+      format,
+      pageCount: pages.length,
+      pages,
+      doclingMarkdown,
+      durationMs: Date.now() - startTime,
+    };
   }
 
   // ============================================================

@@ -31,6 +31,10 @@ export function getPagesDir(jobId: string): string {
   return path.join(base(), "jobs", jobId, "pages");
 }
 
+export function getDoclingOutputDir(jobId: string): string {
+  return path.join(base(), "jobs", jobId, "docling-output");
+}
+
 export function getIllustrationsDir(jobId: string): string {
   return path.join(base(), "jobs", jobId, "illustrations");
 }
