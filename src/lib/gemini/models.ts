@@ -17,7 +17,7 @@ export function calculateCost(
   inputTokens: number,
   outputTokens: number,
 ): number {
-  const pricing = MODEL_PRICING[model] ?? MODEL_PRICING["gemini-2.5-flash"];
+  const pricing = MODEL_PRICING[model] ?? MODEL_PRICING["gemini-3.1-flash-lite-preview"];
   const inputCost = (inputTokens / 1_000_000) * pricing.inputPerMillion;
   const outputCost = (outputTokens / 1_000_000) * pricing.outputPerMillion;
   return Math.round((inputCost + outputCost) * 1_000_000) / 1_000_000; // round to 6 decimal places

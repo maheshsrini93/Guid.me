@@ -35,8 +35,10 @@ export const DEMO_EXTRACTED_DOCUMENT: ExtractedDocument = {
 
 export const DEMO_PAGE_EXTRACTIONS: RawPageExtraction[] = [
   {
+    pageType: "parts_inventory",
     steps: [{
       stepNumber: 0,
+      isSubStep: false,
       rawDescription: "Parts overview page showing all components: side panels (x2), shelves (x4), back panel (x1), wooden dowels (x12), cam locks (x8), screws (x8)",
       partsShown: [
         { partNumber: "104321", partName: "Side panel", quantity: 2 },
@@ -59,12 +61,14 @@ export const DEMO_PAGE_EXTRACTIONS: RawPageExtraction[] = [
       complexity: "simple",
       confidence: 0.95,
     }],
-    pageIndicators: { arrowCount: 0, hasHingeOrRotation: false, hasFastenerAmbiguity: false, isPartsPage: true },
+    pageIndicators: { arrowCount: 0, hasHingeOrRotation: false, hasFastenerAmbiguity: false, isPartsPage: true, hasTwoPersonWarning: false, hasSubSteps: false },
   },
   {
+    pageType: "assembly",
     steps: [
       {
         stepNumber: 1,
+        isSubStep: false,
         rawDescription: "Insert wooden dowels into pre-drilled holes on the side panel. Two dowels per shelf position.",
         partsShown: [
           { partNumber: "104321", partName: "Side panel", quantity: 1 },
@@ -82,6 +86,7 @@ export const DEMO_PAGE_EXTRACTIONS: RawPageExtraction[] = [
       },
       {
         stepNumber: 2,
+        isSubStep: false,
         rawDescription: "Attach shelves to side panel by aligning dowel holes and pressing down firmly.",
         partsShown: [
           { partNumber: "104322", partName: "Shelf", quantity: 4 },
@@ -100,12 +105,14 @@ export const DEMO_PAGE_EXTRACTIONS: RawPageExtraction[] = [
         confidence: 0.90,
       },
     ],
-    pageIndicators: { arrowCount: 3, hasHingeOrRotation: false, hasFastenerAmbiguity: false, isPartsPage: false },
+    pageIndicators: { arrowCount: 3, hasHingeOrRotation: false, hasFastenerAmbiguity: false, isPartsPage: false, hasTwoPersonWarning: false, hasSubSteps: false },
   },
   {
+    pageType: "assembly",
     steps: [
       {
         stepNumber: 3,
+        isSubStep: false,
         rawDescription: "Insert wooden dowels into the second side panel and lower it onto the shelf assembly.",
         partsShown: [
           { partNumber: "104321", partName: "Side panel", quantity: 1 },
@@ -126,6 +133,7 @@ export const DEMO_PAGE_EXTRACTIONS: RawPageExtraction[] = [
       },
       {
         stepNumber: 4,
+        isSubStep: false,
         rawDescription: "Insert cam locks into shelf edges and tighten with screwdriver to secure shelves to side panels.",
         partsShown: [
           { partNumber: "100002", partName: "Cam lock", quantity: 8 },
@@ -144,12 +152,14 @@ export const DEMO_PAGE_EXTRACTIONS: RawPageExtraction[] = [
         confidence: 0.91,
       },
     ],
-    pageIndicators: { arrowCount: 4, hasHingeOrRotation: false, hasFastenerAmbiguity: false, isPartsPage: false },
+    pageIndicators: { arrowCount: 4, hasHingeOrRotation: false, hasFastenerAmbiguity: false, isPartsPage: false, hasTwoPersonWarning: true, hasSubSteps: false },
   },
   {
+    pageType: "assembly",
     steps: [
       {
         stepNumber: 5,
+        isSubStep: false,
         rawDescription: "Position back panel against the rear of the assembly, aligning with edges.",
         partsShown: [
           { partNumber: "104323", partName: "Back panel", quantity: 1 },
@@ -169,6 +179,7 @@ export const DEMO_PAGE_EXTRACTIONS: RawPageExtraction[] = [
       },
       {
         stepNumber: 6,
+        isSubStep: false,
         rawDescription: "Secure back panel with screws. Insert screws along edges every 150 mm and tighten.",
         partsShown: [
           { partNumber: "100003", partName: "Screw", quantity: 8 },
@@ -186,7 +197,7 @@ export const DEMO_PAGE_EXTRACTIONS: RawPageExtraction[] = [
         confidence: 0.93,
       },
     ],
-    pageIndicators: { arrowCount: 3, hasHingeOrRotation: false, hasFastenerAmbiguity: false, isPartsPage: false },
+    pageIndicators: { arrowCount: 3, hasHingeOrRotation: false, hasFastenerAmbiguity: false, isPartsPage: false, hasTwoPersonWarning: false, hasSubSteps: false },
   },
 ];
 
@@ -612,8 +623,8 @@ export const DEMO_XML_CONTENT = `<?xml version="1.0" encoding="UTF-8"?>
     <processing-time-ms>45000</processing-time-ms>
     <text-revision-loops>0</text-revision-loops>
     <models-used>
-      <model>gemini-2.5-flash</model>
-      <model>gemini-2.5-pro</model>
+      <model>gemini-3.1-flash-lite-preview</model>
+      <model>gemini-3.1-pro-preview</model>
     </models-used>
   </generation-metadata>
 </work-instruction>`;
@@ -624,12 +635,12 @@ export const DEMO_XML_CONTENT = `<?xml version="1.0" encoding="UTF-8"?>
 
 export const DEMO_COST_RECORDS = [
   { agent: "document-extractor", model: "code", costUsd: 0, inputTokens: 0, outputTokens: 0 },
-  { agent: "vision-analyzer", model: "gemini-2.5-flash", costUsd: 0.06, inputTokens: 28000, outputTokens: 4200 },
-  { agent: "instruction-composer", model: "gemini-2.5-flash", costUsd: 0.02, inputTokens: 8500, outputTokens: 3100 },
-  { agent: "guideline-enforcer", model: "gemini-2.5-flash", costUsd: 0.03, inputTokens: 12000, outputTokens: 4800 },
-  { agent: "quality-reviewer", model: "gemini-2.5-pro", costUsd: 0.08, inputTokens: 9200, outputTokens: 2100 },
-  { agent: "safety-reviewer", model: "gemini-2.5-pro", costUsd: 0.04, inputTokens: 6800, outputTokens: 1500 },
-  { agent: "illustration-generator", model: "gemini-2.5-flash-preview-image-generation", costUsd: 0.24, inputTokens: 0, outputTokens: 0 },
+  { agent: "vision-analyzer", model: "gemini-3.1-pro-preview", costUsd: 0.06, inputTokens: 28000, outputTokens: 4200 },
+  { agent: "instruction-composer", model: "gemini-3.1-pro-preview", costUsd: 0.02, inputTokens: 8500, outputTokens: 3100 },
+  { agent: "guideline-enforcer", model: "gemini-3.1-flash-lite-preview", costUsd: 0.03, inputTokens: 12000, outputTokens: 4800 },
+  { agent: "quality-reviewer", model: "gemini-3.1-pro-preview", costUsd: 0.08, inputTokens: 9200, outputTokens: 2100 },
+  { agent: "safety-reviewer", model: "gemini-3.1-pro-preview", costUsd: 0.04, inputTokens: 6800, outputTokens: 1500 },
+  { agent: "illustration-generator", model: "gemini-3.1-flash-image-preview", costUsd: 0.24, inputTokens: 0, outputTokens: 0 },
   { agent: "xml-assembler", model: "code", costUsd: 0, inputTokens: 0, outputTokens: 0 },
 ];
 

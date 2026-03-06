@@ -143,7 +143,7 @@ export async function runDemoPipeline(jobId: string): Promise<void> {
     const reviewStartedAt = new Date().toISOString();
     db.insert(agentExecutions).values({
       id: generateId(), jobId, agentName: "quality-reviewer", executionOrder: 5,
-      model: "gemini-2.5-pro", wasEscalation: false, promptSent: "[demo mode]",
+      model: "gemini-3.1-pro-preview", wasEscalation: false, promptSent: "[demo mode]",
       responseReceived: "[demo mode]", structuredOutput: null,
       inputTokens: 9200, outputTokens: 2100, costUsd: 0.08,
       startedAt: reviewStartedAt, completedAt: new Date().toISOString(),
@@ -151,7 +151,7 @@ export async function runDemoPipeline(jobId: string): Promise<void> {
     }).run();
     db.insert(agentExecutions).values({
       id: generateId(), jobId, agentName: "safety-reviewer", executionOrder: 6,
-      model: "gemini-2.5-pro", wasEscalation: false, promptSent: "[demo mode]",
+      model: "gemini-3.1-pro-preview", wasEscalation: false, promptSent: "[demo mode]",
       responseReceived: "[demo mode]", structuredOutput: null,
       inputTokens: 6800, outputTokens: 1500, costUsd: 0.04,
       startedAt: reviewStartedAt, completedAt: new Date().toISOString(),
@@ -205,7 +205,7 @@ export async function runDemoPipeline(jobId: string): Promise<void> {
         domain: "consumer",
         estimatedMinutes: DEMO_ENFORCED_GUIDE.guideMetadata.estimatedMinutes,
         safetyLevel: DEMO_SAFETY_REVIEW.recommendedSafetyLevel,
-        modelsUsed: JSON.stringify(["gemini-2.5-flash", "gemini-2.5-pro"]),
+        modelsUsed: JSON.stringify(["gemini-3.1-flash-lite-preview", "gemini-3.1-pro-preview"]),
         textRevisionLoops: 0,
         totalCostUsd: DEMO_TOTAL_COST,
         generatedAt: new Date().toISOString(),
@@ -224,7 +224,7 @@ export async function runDemoPipeline(jobId: string): Promise<void> {
           mimeType: "image/png",
           width: 512,
           height: 512,
-          model: "gemini-2.5-flash-preview-image-generation",
+          model: "gemini-3.1-flash-image-preview",
           costUsd: 0.04,
           durationMs: 2000,
           generatedAt: new Date().toISOString(),

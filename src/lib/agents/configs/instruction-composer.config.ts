@@ -1,8 +1,9 @@
-import { FLASH_MODEL } from "@/lib/gemini/models";
+import { PRO_MODEL } from "@/lib/gemini/models";
 import type { ComposedGuide } from "@/types/agents";
 import { AgentValidationError, type AgentConfig } from "../types";
 import { instructionComposerSchema } from "../schemas/instruction-composer.schema";
 import {
+  PROMPT_VERSION,
   buildInstructionComposerSystemPrompt,
   buildInstructionComposerUserPrompt,
 } from "../prompts/instruction-composer";
@@ -11,7 +12,7 @@ export const instructionComposerConfig: AgentConfig<ComposedGuide> = {
   name: "instruction-composer",
   displayName: "Instruction Composer",
   executionOrder: 3,
-  defaultModel: FLASH_MODEL,
+  defaultModel: PRO_MODEL,
   // No escalation for Composer
 
   generationOptions: {
@@ -26,6 +27,7 @@ export const instructionComposerConfig: AgentConfig<ComposedGuide> = {
     timeoutMs: 120_000,
   },
 
+  promptVersion: PROMPT_VERSION,
   invocationMode: "single",
 
   buildSystemPrompt: buildInstructionComposerSystemPrompt,

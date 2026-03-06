@@ -2,11 +2,11 @@ export const config = {
   geminiApiKey: process.env.GEMINI_API_KEY!,
   databaseUrl: process.env.DATABASE_URL ?? "file:./storage/guid.db",
   storagePath: process.env.STORAGE_PATH ?? "./storage",
-  geminiFlashModel: process.env.GEMINI_FLASH_MODEL ?? "gemini-2.5-flash",
-  geminiProModel: process.env.GEMINI_PRO_MODEL ?? "gemini-2.5-pro",
+  geminiFlashModel: process.env.GEMINI_FLASH_MODEL ?? "gemini-3.1-flash-lite-preview",
+  geminiProModel: process.env.GEMINI_PRO_MODEL ?? "gemini-3.1-pro-preview",
   geminiImageModel:
     process.env.GEMINI_IMAGE_MODEL ??
-    "gemini-2.5-flash-image",
+    "gemini-3.1-flash-image-preview",
   qualityThreshold: parseInt(process.env.QUALITY_THRESHOLD ?? "85", 10),
   maxRevisionLoops: parseInt(process.env.MAX_REVISION_LOOPS ?? "2", 10),
   maxFileSizeMb: parseInt(process.env.MAX_FILE_SIZE_MB ?? "50", 10),
@@ -26,8 +26,8 @@ export interface ModelPricing {
 }
 
 export const MODEL_PRICING: Record<string, ModelPricing> = {
-  "gemini-2.5-flash": { inputPerMillion: 0.15, outputPerMillion: 0.60 },
-  "gemini-2.5-pro": { inputPerMillion: 1.25, outputPerMillion: 5.0 },
+  "gemini-3.1-flash-lite-preview": { inputPerMillion: 0.15, outputPerMillion: 0.60 },
+  "gemini-3.1-pro-preview": { inputPerMillion: 1.25, outputPerMillion: 5.0 },
 };
 
 /** Flat cost per generated image (USD) */

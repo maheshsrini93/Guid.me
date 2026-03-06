@@ -58,6 +58,8 @@ export interface VisionAnalyzerInput {
 }
 
 export interface RawPageExtraction {
+  /** Page classification */
+  pageType?: "cover" | "safety" | "parts_inventory" | "assembly" | "completion";
   /** Extracted steps from this page */
   steps: RawStepExtraction[];
   /** Page-level indicators for escalation decisions */
@@ -66,6 +68,8 @@ export interface RawPageExtraction {
     hasHingeOrRotation: boolean;
     hasFastenerAmbiguity: boolean;
     isPartsPage: boolean;
+    hasTwoPersonWarning?: boolean;
+    hasSubSteps?: boolean;
   };
 }
 
@@ -74,6 +78,10 @@ export interface RawStepExtraction {
   stepNumber: number;
   /** Factual observation, NOT narrative prose */
   rawDescription: string;
+  /** True if this is a detail circle / magnified inset */
+  isSubStep?: boolean;
+  /** Parent step number if isSubStep is true */
+  parentStepNumber?: number;
   /** Parts visible in this step */
   partsShown: PartReference[];
   /** Tools visible in this step */
@@ -85,6 +93,8 @@ export interface RawStepExtraction {
     orientation?: string;
     alignmentNotes?: string;
   };
+  /** Structured spatial relationships between parts */
+  spatialRelationships?: SpatialRelationship[];
   /** Arrow annotations on the page */
   arrows: ArrowAnnotation[];
   /** Fastener details */
@@ -97,6 +107,13 @@ export interface RawStepExtraction {
   complexity: "simple" | "complex";
   /** Self-reported confidence (0.0 to 1.0) */
   confidence: number;
+}
+
+export interface SpatialRelationship {
+  partA: string;
+  relationship: string;
+  partB: string;
+  notes?: string;
 }
 
 export interface PartReference {
@@ -113,6 +130,8 @@ export interface ToolReference {
   toolName: string;
   /** Optional icon identifier */
   toolIcon?: string;
+  /** Tool identifier from the manual */
+  toolId?: string;
 }
 
 export interface VisualAction {
@@ -133,6 +152,8 @@ export interface ArrowAnnotation {
   label?: string;
   /** true = assembly motion, false = callout pointer */
   indicatesMotion: boolean;
+  /** Arrow purpose classification */
+  arrowType?: "motion" | "callout" | "rotation";
 }
 
 export interface FastenerDetail {
@@ -144,6 +165,8 @@ export interface FastenerDetail {
   rotation: "clockwise" | "counter_clockwise" | "none";
   /** Additional notes (e.g., "quarter-turn to lock") */
   notes?: string;
+  /** How many of this fastener used in this step */
+  quantity?: number;
 }
 
 // ============================================================

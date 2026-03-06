@@ -3,6 +3,7 @@ import type { RawPageExtraction } from "@/types/agents";
 import { AgentValidationError, type AgentConfig } from "../types";
 import { visionAnalyzerSchema } from "../schemas/vision-analyzer.schema";
 import {
+  PROMPT_VERSION,
   buildVisionAnalyzerSystemPrompt,
   buildVisionAnalyzerUserPrompt,
 } from "../prompts/vision-analyzer";
@@ -11,11 +12,11 @@ export const visionAnalyzerConfig: AgentConfig<RawPageExtraction[]> = {
   name: "vision-analyzer",
   displayName: "Vision Analyzer",
   executionOrder: 2,
-  defaultModel: FLASH_MODEL,
+  defaultModel: PRO_MODEL,
   escalationModel: PRO_MODEL,
 
   generationOptions: {
-    temperature: 0.3,
+    temperature: 1.0,
     maxOutputTokens: 8192,
   },
 
@@ -47,8 +48,14 @@ export const visionAnalyzerConfig: AgentConfig<RawPageExtraction[]> = {
       check: (pages) =>
         pages.some((p) => p.steps.some((s) => s.confidence < 0.7)),
     },
+    {
+      name: "has-sub-steps",
+      check: (pages) =>
+        pages.some((p) => p.pageIndicators.hasSubSteps === true),
+    },
   ],
 
+  promptVersion: PROMPT_VERSION,
   usesVision: true,
   invocationMode: "per-page",
 
@@ -82,6 +89,16 @@ export const visionAnalyzerConfig: AgentConfig<RawPageExtraction[]> = {
   summarize(output) {
     const totalSteps = output.reduce((sum, p) => sum + p.steps.length, 0);
     const partsPages = output.filter((p) => p.pageIndicators.isPartsPage).length;
-    return `Analyzed ${output.length} pages: ${totalSteps} steps found, ${partsPages} parts page(s)`;
+    const pageTypes = output
+      .map((p) => p.pageType)
+      .filter(Boolean)
+      .reduce((acc, t) => {
+        acc[t!] = (acc[t!] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+    const typeStr = Object.entries(pageTypes)
+      .map(([t, n]) => `${n} ${t}`)
+      .join(", ");
+    return `Analyzed ${output.length} pages: ${totalSteps} steps found, ${partsPages} parts page(s)${typeStr ? ` (${typeStr})` : ""}`;
   },
 };

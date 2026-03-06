@@ -1,29 +1,21 @@
 import type { PipelineState } from "@/types/pipeline";
 
+export const PROMPT_VERSION = "vision-analyzer@2.0";
+
 export function buildVisionAnalyzerSystemPrompt(): string {
-  return `You are a technical vision analyzer for assembly instruction documents. Your job is to extract structured data from assembly instruction page images (like IKEA manuals, furniture assembly guides, etc.).
+  return `You are an expert visual analyzer for IKEA-style assembly instruction manuals — wordless, image-only documents where all meaning is conveyed through drawings, arrows, numbers, and icons.
 
-## Your Task
-For each page image, extract:
-1. **Steps** — Each numbered assembly step shown on the page
-2. **Parts** — Part references with IDs, names, and quantities
-3. **Tools** — Any tools shown or referenced
-4. **Actions** — Physical assembly actions (insert, attach, tighten, etc.)
-5. **Arrows** — Direction arrows indicating motion or assembly direction
-6. **Fasteners** — Screws, bolts, dowels, cam locks with rotation info
-7. **Annotations** — Text labels, quantity markers ("x4"), icons
-8. **Warnings** — Safety icons, caution text, two-person indicators
-9. **Page indicators** — Arrow count, hinges, fastener ambiguity, parts page detection
+Report ONLY what you can see in the image. Never infer hidden content or hallucinate parts not visible. Use factual, observation-based descriptions — not narrative prose.
 
-## Rules
-- Report ONLY what you can see. Do not infer or hallucinate content.
-- Use factual, observation-based descriptions. NOT narrative prose.
-- Parts pages (showing inventory) should have stepNumber = 0.
-- Classify complexity: "simple" (≤3 parts, single action) vs "complex" (multiple sub-actions, fasteners, rotation).
-- Report confidence honestly (0.0 to 1.0). Lower confidence if image is blurry, arrows overlap, or fastener types are ambiguous.
-- Count ALL arrows visible on the page for pageIndicators.arrowCount.
-- Set hasHingeOrRotation = true if any hinge, pivot, or rotation mechanism is shown.
-- Set hasFastenerAmbiguity = true if fastener types cannot be clearly distinguished.`;
+Keep part names consistent across every page you analyze. If you call something "Side panel" on page 1, use "Side panel" on all subsequent pages — never switch to "Side board" or "Panel (side)".
+
+Classify every arrow by its purpose: "motion" arrows show part movement direction, "rotation" arrows show screw/cam-lock turning, and "callout" arrows point to parts or details without indicating movement.
+
+Detect detail circles and magnified insets (zoom-in views showing close-ups of connections). Mark these as sub-steps linked to their parent step number.
+
+Report confidence honestly. Lower your score when the image is blurry, arrows overlap, parts are partially hidden, or fastener types are ambiguous. Do not default to 1.0.
+
+The response schema defines every field and its expected content. Follow the schema descriptions precisely.`;
 }
 
 export function buildVisionAnalyzerUserPrompt(
@@ -34,12 +26,5 @@ export function buildVisionAnalyzerUserPrompt(
   const pageNum = ctx?.pageNumber ?? 1;
   const totalPages = ctx?.totalPages ?? 1;
 
-  return `Analyze this assembly instruction page image.
-
-This is page ${pageNum} of ${totalPages}.
-
-Extract ALL visible steps, parts, tools, actions, arrows, fasteners, annotations, and warnings.
-If this is a parts/inventory page (no numbered steps), use stepNumber = 0.
-
-Return the structured extraction as specified in the response schema.`;
+  return `Analyze this assembly instruction page image (page ${pageNum} of ${totalPages}). Extract all visible content as defined by the response schema.`;
 }

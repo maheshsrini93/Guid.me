@@ -3,6 +3,7 @@ import type { QualityReviewResult } from "@/types/agents";
 import { AgentValidationError, type AgentConfig } from "../types";
 import { qualityReviewerSchema } from "../schemas/quality-reviewer.schema";
 import {
+  PROMPT_VERSION,
   buildQualityReviewerSystemPrompt,
   buildQualityReviewerUserPrompt,
 } from "../prompts/quality-reviewer";
@@ -25,6 +26,7 @@ export const qualityReviewerConfig: AgentConfig<QualityReviewResult> = {
     timeoutMs: 90_000, // Pro model may be slower
   },
 
+  promptVersion: PROMPT_VERSION,
   invocationMode: "single",
 
   buildSystemPrompt: buildQualityReviewerSystemPrompt,

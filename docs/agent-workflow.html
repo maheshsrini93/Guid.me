@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guid - Agent Pipeline Workflow</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+    padding: 48px 24px;
+  }
+
+  .container {
+    max-width: 880px;
+    margin: 0 auto;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 56px;
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: #f8fafc;
+    margin-bottom: 8px;
+  }
+  .header p {
+    font-size: 14px;
+    color: #94a3b8;
+  }
+
+  /* Pipeline track */
+  .pipeline {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* Connector line */
+  .connector {
+    width: 2px;
+    height: 32px;
+    background: #334155;
+    margin: 0 auto;
+  }
+  .connector.short { height: 20px; }
+
+  /* Arrow */
+  .arrow {
+    width: 0; height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid #334155;
+    margin: 0 auto;
+  }
+
+  /* Data label on connector */
+  .data-label {
+    text-align: center;
+    font-size: 11px;
+    color: #64748b;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    padding: 2px 0;
+  }
+
+  /* Agent card */
+  .agent-card {
+    border: 1px solid #1e293b;
+    border-radius: 12px;
+    padding: 20px 24px;
+    background: #1e293b;
+    position: relative;
+    transition: border-color 0.2s;
+  }
+  .agent-card:hover {
+    border-color: #475569;
+  }
+
+  .agent-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .agent-number {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .agent-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #f1f5f9;
+  }
+
+  .agent-meta {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .meta-chip {
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    background: #0f172a;
+    color: #94a3b8;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .agent-desc {
+    font-size: 13px;
+    color: #94a3b8;
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+
+  /* Color themes */
+  .theme-code .agent-number { background: #065f46; color: #6ee7b7; }
+  .theme-code { border-left: 3px solid #10b981; }
+
+  .theme-flash .agent-number { background: #1e3a5f; color: #7dd3fc; }
+  .theme-flash { border-left: 3px solid #38bdf8; }
+
+  .theme-pro .agent-number { background: #581c87; color: #d8b4fe; }
+  .theme-pro { border-left: 3px solid #a855f7; }
+
+  .theme-image .agent-number { background: #831843; color: #f9a8d4; }
+  .theme-image { border-left: 3px solid #ec4899; }
+
+  /* Parallel box */
+  .parallel-wrapper {
+    border: 1px dashed #475569;
+    border-radius: 14px;
+    padding: 16px;
+    background: rgba(30, 41, 59, 0.5);
+  }
+  .parallel-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #64748b;
+    text-align: center;
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+  .parallel-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  /* Quality gate */
+  .gate-card {
+    border: 1px solid #854d0e;
+    border-radius: 12px;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, #1c1917 0%, #292524 100%);
+    text-align: center;
+  }
+  .gate-card h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fbbf24;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .gate-paths {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+  .gate-path {
+    padding: 10px 8px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+  }
+  .gate-path .score {
+    font-size: 18px;
+    font-weight: 700;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .gate-path .label {
+    font-size: 11px;
+    font-weight: 400;
+    opacity: 0.8;
+  }
+  .path-approve { background: #052e16; color: #4ade80; border: 1px solid #166534; }
+  .path-revise { background: #451a03; color: #fb923c; border: 1px solid #92400e; }
+  .path-hold { background: #450a0a; color: #f87171; border: 1px solid #991b1b; }
+
+  /* Revision loop */
+  .revision-card {
+    border: 1px solid #92400e;
+    border-radius: 12px;
+    padding: 16px 20px;
+    background: #1c1917;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .revision-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #451a03;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .revision-text h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fdba74;
+    margin-bottom: 3px;
+  }
+  .revision-text p {
+    font-size: 12px;
+    color: #a8a29e;
+    line-height: 1.4;
+  }
+
+  /* Output */
+  .output-card {
+    border: 1px solid #166534;
+    border-radius: 12px;
+    padding: 24px;
+    background: linear-gradient(135deg, #052e16 0%, #14532d 100%);
+    text-align: center;
+  }
+  .output-card h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #4ade80;
+    margin-bottom: 6px;
+  }
+  .output-card p {
+    font-size: 13px;
+    color: #86efac;
+  }
+
+  /* SSE sidebar */
+  .sse-badge {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 12px;
+    color: #94a3b8;
+    max-width: 180px;
+  }
+  .sse-badge h4 {
+    font-size: 12px;
+    font-weight: 600;
+    color: #fbbf24;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sse-badge .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #fbbf24;
+    display: inline-block;
+    animation: pulse 2s infinite;
+  }
+  .sse-badge code {
+    display: block;
+    font-size: 11px;
+    color: #64748b;
+    font-family: 'SF Mono', monospace;
+    line-height: 1.6;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* Cost summary */
+  .cost-summary {
+    margin-top: 48px;
+    border: 1px solid #1e293b;
+    border-radius: 12px;
+    padding: 24px;
+    background: #1e293b;
+  }
+  .cost-summary h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin-bottom: 16px;
+  }
+  .cost-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 0;
+  }
+  .cost-row .cost-agent {
+    width: 200px;
+    font-size: 13px;
+    color: #cbd5e1;
+    flex-shrink: 0;
+  }
+  .cost-bar-track {
+    flex: 1;
+    height: 8px;
+    background: #0f172a;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .cost-bar {
+    height: 100%;
+    border-radius: 4px;
+    min-width: 4px;
+  }
+  .cost-value {
+    width: 56px;
+    text-align: right;
+    font-size: 13px;
+    font-family: 'SF Mono', monospace;
+    color: #94a3b8;
+    flex-shrink: 0;
+  }
+  .cost-total {
+    display: flex;
+    justify-content: space-between;
+    border-top: 1px solid #334155;
+    margin-top: 12px;
+    padding-top: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #f1f5f9;
+  }
+
+  /* Upload trigger */
+  .trigger-card {
+    border: 1px dashed #475569;
+    border-radius: 12px;
+    padding: 16px 24px;
+    text-align: center;
+    background: rgba(30, 41, 59, 0.3);
+  }
+  .trigger-card h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin-bottom: 4px;
+  }
+  .trigger-card p {
+    font-size: 12px;
+    color: #64748b;
+    font-family: 'SF Mono', monospace;
+  }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #94a3b8;
+  }
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+  }
+
+  @media (max-width: 640px) {
+    .parallel-grid { grid-template-columns: 1fr; }
+    .gate-paths { grid-template-columns: 1fr; }
+    .sse-badge { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>Guid Agent Pipeline</h1>
+    <p>8 specialized AI agents transform documents into structured work instructions</p>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div> Code (no AI)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#38bdf8"></div> Gemini Flash</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div> Gemini Pro</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ec4899"></div> Image Generation</div>
+  </div>
+
+  <div class="pipeline">
+
+    <!-- Upload -->
+    <div class="trigger-card">
+      <h3>Upload PDF / DOCX</h3>
+      <p>POST /api/jobs</p>
+    </div>
+
+    <div class="connector"></div>
+    <div class="arrow"></div>
+
+    <!-- Agent 1 -->
+    <div class="agent-card theme-code">
+      <div class="agent-header">
+        <div class="agent-number">1</div>
+        <div class="agent-name">Document Extractor</div>
+      </div>
+      <div class="agent-meta">
+        <span class="meta-chip">pdftoppm / mammoth</span>
+        <span class="meta-chip">$0.00</span>
+      </div>
+      <div class="agent-desc">Extracts pages as images (PDF) or raw HTML (DOCX). Pure code, no AI calls.</div>
+    </div>
+
+    <div class="connector"></div>
+    <div class="data-label">extractedDocument</div>
+    <div class="arrow"></div>
+
+    <!-- Agent 2 -->
+    <div class="agent-card theme-flash">
+      <div class="agent-header">
+        <div class="agent-number">2</div>
+        <div class="agent-name">Vision Analyzer</div>
+      </div>
+      <div class="agent-meta">
+        <span class="meta-chip">Gemini Flash (per page)</span>
+        <span class="meta-chip">~$0.06</span>
+        <span class="meta-chip">Auto-escalates to Pro</span>
+      </div>
+      <div class="agent-desc">Analyzes each page image to extract steps, parts, tools, and spatial relationships. Escalates to Gemini Pro for complex pages (many arrows, hinges, low confidence).</div>
+    </div>
+
+    <div class="connector"></div>
+    <div class="data-label">pageExtractions[]</div>
+    <div class="arrow"></div>
+
+    <!-- Agent 3 -->
+    <div class="agent-card theme-flash">
+      <div class="agent-header">
+        <div class="agent-number">3</div>
+        <div class="agent-name">Instruction Composer</div>
+      </div>
+      <div class="agent-meta">
+        <span class="meta-chip">Gemini Flash</span>
+        <span class="meta-chip">~$0.02</span>
+      </div>
+      <div class="agent-desc">Merges per-page extractions into a coherent guide with unified steps, parts list, phase boundaries, and time estimates.</div>
+    </div>
+
+    <div class="connector"></div>
+    <div class="data-label">composedGuide</div>
+    <div class="arrow"></div>
+
+    <!-- Agent 4 -->
+    <div class="agent-card theme-flash">
+      <div class="agent-header">
+        <div class="agent-number">4</div>
+        <div class="agent-name">Guideline Enforcer</div>
+      </div>
+      <div class="agent-meta">
+        <span class="meta-chip">Gemini Flash + full WI YAML</span>
+        <span class="meta-chip">~$0.03</span>
+        <span class="meta-chip">+ 9 post-processor transforms</span>
+      </div>
+      <div class="agent-desc">Applies 38 writing guidelines (WI-001 to WI-038). Rewrites steps with approved verbs, adds safety callouts, structures part references. Post-processor applies 9 deterministic fixes.</div>
+    </div>
+
+    <div class="connector"></div>
+    <div class="data-label">enforcedGuide</div>
+    <div class="arrow"></div>
+
+    <!-- Agents 5+6 Parallel -->
+    <div class="parallel-wrapper">
+      <div class="parallel-label">Parallel Execution</div>
+      <div class="parallel-grid">
+        <div class="agent-card theme-pro">
+          <div class="agent-header">
+            <div class="agent-number">5</div>
+            <div class="agent-name">Quality Reviewer</div>
+          </div>
+          <div class="agent-meta">
+            <span class="meta-chip">Gemini Pro</span>
+            <span class="meta-chip">~$0.08</span>
+          </div>
+          <div class="agent-desc">Scores guide quality 0-100 against all 38 WI guidelines. Produces issue list with severity and fix suggestions.</div>
+        </div>
+        <div class="agent-card theme-pro">
+          <div class="agent-header">
+            <div class="agent-number">6</div>
+            <div class="agent-name">Safety Reviewer</div>
+          </div>
+          <div class="agent-meta">
+            <span class="meta-chip">Gemini Pro</span>
+            <span class="meta-chip">~$0.04</span>
+          </div>
+          <div class="agent-desc">Verifies all safety hazards are identified. Checks for missing warnings, two-person lifts, PPE, and pinch points.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector"></div>
+    <div class="arrow"></div>
+
+    <!-- Quality Gate -->
+    <div class="gate-card">
+      <h3>Quality Gate</h3>
+      <div style="font-size:12px; color:#a8a29e; margin-bottom:14px;">Weighted: 70% quality + 30% safety</div>
+      <div class="gate-paths">
+        <div class="gate-path path-approve">
+          <span class="score">&ge; 85</span>
+          Approved
+          <div class="label">Continue to illustrations</div>
+        </div>
+        <div class="gate-path path-revise">
+          <span class="score">70-84</span>
+          Revise
+          <div class="label">Loop back to Agent 4</div>
+        </div>
+        <div class="gate-path path-hold">
+          <span class="score">&lt; 70</span>
+          Hold
+          <div class="label">Manual review needed</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector short"></div>
+
+    <!-- Revision loop -->
+    <div class="revision-card">
+      <div class="revision-icon">&#x21bb;</div>
+      <div class="revision-text">
+        <h4>Revision Loop (max 2 rounds)</h4>
+        <p>Feedback from reviewers routes back to the Guideline Enforcer. After 2 revision attempts, the pipeline proceeds regardless.</p>
+      </div>
+    </div>
+
+    <div class="connector"></div>
+    <div class="data-label">approved enforcedGuide</div>
+    <div class="arrow"></div>
+
+    <!-- Agent 7 -->
+    <div class="agent-card theme-image">
+      <div class="agent-header">
+        <div class="agent-number">7</div>
+        <div class="agent-name">Illustration Generator</div>
+      </div>
+      <div class="agent-meta">
+        <span class="meta-chip">Gemini Flash Image</span>
+        <span class="meta-chip">$0.04 / image</span>
+        <span class="meta-chip">~$0.70 total</span>
+      </div>
+      <div class="agent-desc">Generates one isometric technical illustration per step. Active parts in full color, previously assembled parts muted. Includes motion arrows and part labels (A, B, C...).</div>
+    </div>
+
+    <div class="connector"></div>
+    <div class="data-label">illustrations[]</div>
+    <div class="arrow"></div>
+
+    <!-- Agent 8 -->
+    <div class="agent-card theme-code">
+      <div class="agent-header">
+        <div class="agent-number">8</div>
+        <div class="agent-name">XML Assembler</div>
+      </div>
+      <div class="agent-meta">
+        <span class="meta-chip">Code Agent</span>
+        <span class="meta-chip">$0.00</span>
+      </div>
+      <div class="agent-desc">Assembles final canonical XML with namespace, metadata, phases, steps, illustration references, and generation metadata.</div>
+    </div>
+
+    <div class="connector"></div>
+    <div class="arrow"></div>
+
+    <!-- Output -->
+    <div class="output-card">
+      <h3>Completed</h3>
+      <p>Canonical XML + Illustrations ready for export</p>
+    </div>
+
+  </div>
+
+  <!-- Cost summary -->
+  <div class="cost-summary">
+    <h3>Cost Breakdown (24-page PDF)</h3>
+
+    <div class="cost-row">
+      <span class="cost-agent">1. Document Extractor</span>
+      <div class="cost-bar-track"><div class="cost-bar" style="width:2%;background:#10b981"></div></div>
+      <span class="cost-value">$0.00</span>
+    </div>
+    <div class="cost-row">
+      <span class="cost-agent">2. Vision Analyzer</span>
+      <div class="cost-bar-track"><div class="cost-bar" style="width:6.5%;background:#38bdf8"></div></div>
+      <span class="cost-value">$0.06</span>
+    </div>
+    <div class="cost-row">
+      <span class="cost-agent">3. Instruction Composer</span>
+      <div class="cost-bar-track"><div class="cost-bar" style="width:2.2%;background:#38bdf8"></div></div>
+      <span class="cost-value">$0.02</span>
+    </div>
+    <div class="cost-row">
+      <span class="cost-agent">4. Guideline Enforcer</span>
+      <div class="cost-bar-track"><div class="cost-bar" style="width:3.2%;background:#38bdf8"></div></div>
+      <span class="cost-value">$0.03</span>
+    </div>
+    <div class="cost-row">
+      <span class="cost-agent">5. Quality Reviewer</span>
+      <div class="cost-bar-track"><div class="cost-bar" style="width:8.6%;background:#a855f7"></div></div>
+      <span class="cost-value">$0.08</span>
+    </div>
+    <div class="cost-row">
+      <span class="cost-agent">6. Safety Reviewer</span>
+      <div class="cost-bar-track"><div class="cost-bar" style="width:4.3%;background:#a855f7"></div></div>
+      <span class="cost-value">$0.04</span>
+    </div>
+    <div class="cost-row">
+      <span class="cost-agent">7. Illustration Generator</span>
+      <div class="cost-bar-track"><div class="cost-bar" style="width:75%;background:#ec4899"></div></div>
+      <span class="cost-value">$0.70</span>
+    </div>
+    <div class="cost-row">
+      <span class="cost-agent">8. XML Assembler</span>
+      <div class="cost-bar-track"><div class="cost-bar" style="width:2%;background:#10b981"></div></div>
+      <span class="cost-value">$0.00</span>
+    </div>
+
+    <div class="cost-total">
+      <span>Total per 24-page document</span>
+      <span>~$0.93</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- SSE badge -->
+<div class="sse-badge">
+  <h4><span class="dot"></span> Live SSE Stream</h4>
+  <code>
+    agent:start<br>
+    agent:progress<br>
+    agent:complete<br>
+    pipeline:cost
+  </code>
+</div>
+
+</body>
+</html>

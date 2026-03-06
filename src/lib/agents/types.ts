@@ -48,6 +48,7 @@ export interface AgentExecutionRecord {
   inputTokens: number;
   outputTokens: number;
   costUsd: number;
+  promptVersion: string | null;
   startedAt: string;
   completedAt: string | null;
   durationMs: number | null;
@@ -114,6 +115,7 @@ export interface AgentConfig<TOutput> {
   escalationRules?: EscalationRule<TOutput>[];
   usesVision?: boolean;
   generatesImages?: boolean;
+  promptVersion: string;
   invocationMode: "single" | "per-page" | "per-step";
   buildSystemPrompt: () => string;
   buildUserPrompt: (state: PipelineState, context?: unknown) => string;

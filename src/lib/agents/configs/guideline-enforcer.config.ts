@@ -3,6 +3,7 @@ import type { EnforcedGuide } from "@/types/agents";
 import { AgentValidationError, type AgentConfig } from "../types";
 import { guidelineEnforcerSchema } from "../schemas/guideline-enforcer.schema";
 import {
+  PROMPT_VERSION,
   buildGuidelineEnforcerSystemPrompt,
   buildGuidelineEnforcerUserPrompt,
 } from "../prompts/guideline-enforcer";
@@ -26,6 +27,7 @@ export const guidelineEnforcerConfig: AgentConfig<EnforcedGuide> = {
     timeoutMs: 120_000,
   },
 
+  promptVersion: PROMPT_VERSION,
   invocationMode: "single",
 
   buildSystemPrompt: buildGuidelineEnforcerSystemPrompt,

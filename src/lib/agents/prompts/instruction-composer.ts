@@ -1,5 +1,7 @@
 import type { PipelineState } from "@/types/pipeline";
 
+export const PROMPT_VERSION = "instruction-composer@1.0";
+
 export function buildInstructionComposerSystemPrompt(): string {
   return `You are a technical writer specializing in assembly instructions. Your job is to transform raw page-by-page extraction data into a coherent, well-structured assembly guide.
 

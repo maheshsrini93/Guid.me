@@ -85,6 +85,7 @@ export function createAgentContext(
         inputTokens: record.inputTokens,
         outputTokens: record.outputTokens,
         costUsd: record.costUsd,
+        promptVersion: record.promptVersion,
         startedAt: record.startedAt,
         completedAt: record.completedAt,
         durationMs: record.durationMs,

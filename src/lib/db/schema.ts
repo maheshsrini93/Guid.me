@@ -117,6 +117,8 @@ export const agentExecutions = sqliteTable("agent_executions", {
   outputTokens: integer("output_tokens").default(0),
   /** Cost in USD */
   costUsd: real("cost_usd").default(0),
+  /** Prompt version identifier (e.g. "vision-analyzer@1.0") */
+  promptVersion: text("prompt_version"),
 
   // --- Timing ---
   /** Start timestamp */

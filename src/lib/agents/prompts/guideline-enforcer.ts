@@ -1,6 +1,8 @@
 import { getGuidelinesAsString } from "@/lib/guidelines/loader";
 import type { PipelineState } from "@/types/pipeline";
 
+export const PROMPT_VERSION = "guideline-enforcer@1.0";
+
 export function buildGuidelineEnforcerSystemPrompt(): string {
   const wiYaml = getGuidelinesAsString("work-instructions");
 

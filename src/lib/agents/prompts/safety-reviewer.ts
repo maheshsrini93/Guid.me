@@ -1,5 +1,7 @@
 import type { PipelineState } from "@/types/pipeline";
 
+export const PROMPT_VERSION = "safety-reviewer@1.0";
+
 export function buildSafetyReviewerSystemPrompt(): string {
   return `You are a safety reviewer for work instructions. Your job is to verify that all safety hazards are properly identified and addressed in assembly instructions.
 

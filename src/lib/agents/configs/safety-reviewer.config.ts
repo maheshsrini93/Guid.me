@@ -3,6 +3,7 @@ import type { SafetyReviewResult } from "@/types/agents";
 import { AgentValidationError, type AgentConfig } from "../types";
 import { safetyReviewerSchema } from "../schemas/safety-reviewer.schema";
 import {
+  PROMPT_VERSION,
   buildSafetyReviewerSystemPrompt,
   buildSafetyReviewerUserPrompt,
 } from "../prompts/safety-reviewer";
@@ -25,6 +26,7 @@ export const safetyReviewerConfig: AgentConfig<SafetyReviewResult> = {
     timeoutMs: 90_000,
   },
 
+  promptVersion: PROMPT_VERSION,
   invocationMode: "single",
 
   buildSystemPrompt: buildSafetyReviewerSystemPrompt,
