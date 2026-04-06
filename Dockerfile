@@ -12,11 +12,15 @@ RUN pnpm install --frozen-lockfile
 # Force rebuild better-sqlite3 native addon for this platform
 RUN pnpm rebuild better-sqlite3
 
-# Prepare better-sqlite3 + deps for runner stage (flatten pnpm structure)
-RUN mkdir -p /tmp/native-deps && \
-    cp -rL node_modules/better-sqlite3 /tmp/native-deps/better-sqlite3 && \
-    cp -rL node_modules/.pnpm/bindings@*/node_modules/bindings /tmp/native-deps/bindings && \
-    cp -rL node_modules/.pnpm/file-uri-to-path@*/node_modules/file-uri-to-path /tmp/native-deps/file-uri-to-path
+# Prepare better-sqlite3 native binding for runner stage
+# Find the .node binary wherever prebuild-install or node-gyp put it
+RUN SQLITE_PKG=$(readlink -f node_modules/better-sqlite3) && \
+    echo "better-sqlite3 resolved to: $SQLITE_PKG" && \
+    find "$SQLITE_PKG" -name "better_sqlite3.node" -type f && \
+    BINDING=$(find "$SQLITE_PKG" -name "better_sqlite3.node" -type f | head -1) && \
+    echo "Found binding at: $BINDING" && \
+    mkdir -p /tmp/native-binding && \
+    cp "$BINDING" /tmp/native-binding/better_sqlite3.node
 
 # Copy source and build
 COPY . .
@@ -40,7 +44,8 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
 # Copy better-sqlite3 native binding to the pnpm path the runtime expects
-COPY --from=builder /tmp/native-deps/better-sqlite3/build/Release/better_sqlite3.node ./node_modules/.pnpm/better-sqlite3@12.6.2/node_modules/better-sqlite3/build/Release/better_sqlite3.node
+RUN mkdir -p ./node_modules/.pnpm/better-sqlite3@12.6.2/node_modules/better-sqlite3/build/Release
+COPY --from=builder /tmp/native-binding/better_sqlite3.node ./node_modules/.pnpm/better-sqlite3@12.6.2/node_modules/better-sqlite3/build/Release/better_sqlite3.node
 
 # Create storage directory (will be overlaid by volume mount)
 RUN mkdir -p /app/storage
