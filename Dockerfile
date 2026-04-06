@@ -39,10 +39,8 @@ ENV HOSTNAME="0.0.0.0"
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# Copy better-sqlite3 native bindings (excluded from standalone by serverExternalPackages)
-COPY --from=builder /tmp/native-deps/better-sqlite3 ./node_modules/better-sqlite3
-COPY --from=builder /tmp/native-deps/bindings ./node_modules/bindings
-COPY --from=builder /tmp/native-deps/file-uri-to-path ./node_modules/file-uri-to-path
+# Copy better-sqlite3 native binding to the pnpm path the runtime expects
+COPY --from=builder /tmp/native-deps/better-sqlite3/build/Release/better_sqlite3.node ./node_modules/.pnpm/better-sqlite3@12.6.2/node_modules/better-sqlite3/build/Release/better_sqlite3.node
 
 # Create storage directory (will be overlaid by volume mount)
 RUN mkdir -p /app/storage
