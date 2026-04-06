@@ -269,6 +269,14 @@ export interface EnforcedGuide {
   steps: EnforcedStep[];
   /** Guide-level metadata */
   guideMetadata: GuideMetadata;
+  /** Pre-assembly preparation guidance (WI-005) */
+  beforeYouBegin: BeforeYouBegin;
+  /** Post-assembly checks and tips (WI-007) */
+  finishingUp: FinishingUp;
+  /** Canonical term mapping for consistency (WI-028) */
+  terminologyGlossary: TermGlossaryEntry[];
+  /** Machine-readable report of enforcement changes */
+  enforcementSummary: EnforcementSummary;
 }
 
 export interface EnforcedStep {
@@ -280,12 +288,26 @@ export interface EnforcedStep {
   primaryVerb: AllowedVerb;
   /** Guideline-compliant instruction text (verb-first, <= 20 words/sentence) */
   instruction: string;
+  /** Additional detail sentences, each <= 20 words (WI-024) */
+  subNotes: string[];
   /** Structured part references with name + id + quantity */
   parts: StructuredPartRef[];
-  /** Safety callout (if applicable) */
-  safetyCallout: SafetyCallout | null;
+  /** Tools required for this specific step */
+  toolsRequired: string[];
+  /** Safety callouts (may have multiple per step) */
+  safetyCallouts: SafetyCallout[];
   /** Whether this step requires two people */
   twoPersonRequired: boolean;
+  /** What the user sees/hears/feels when step is done correctly */
+  confirmationCue: string | null;
+  /** Difficulty indicator for tricky or precision steps (WI-037) */
+  difficultyFlag: "tricky" | "precision" | null;
+  /** Whether this step is a checkpoint (WI-038) */
+  isCheckpoint: boolean;
+  /** Verification prompt if checkpoint */
+  checkpointNote: string | null;
+  /** Drying/setting time in minutes if applicable (WI-032) */
+  dryingTimeMinutes: number | null;
   /** Transition note from previous step */
   transitionNote: string | null;
   /** Phase name if this step starts a new phase */
@@ -296,6 +318,12 @@ export interface EnforcedStep {
   complexity: "simple" | "complex";
   /** Confidence score */
   confidence: number;
+  /** True if a rule could not be enforced without guessing */
+  needsReview: boolean;
+  /** Full prompt for illustration generation (IL guidelines) */
+  illustrationPrompt: string;
+  /** Illustration complexity routing: simple (1-2 parts) or complex (3+ parts) */
+  illustrationComplexity: "simple" | "complex";
 }
 
 /** The 16 default imperative verbs (from WI-022) */
@@ -326,11 +354,18 @@ export interface StructuredPartRef {
   quantity: number;
 }
 
+export type SafetySeverity = "notice" | "caution" | "warning" | "danger";
+
 export interface SafetyCallout {
   /** Severity level */
-  severity: "caution" | "warning" | "danger";
-  /** Callout text */
+  severity: SafetySeverity;
+  /** Callout text (hazard + mitigation) */
   text: string;
+}
+
+export interface ToolEntry {
+  name: string;
+  quantity?: number;
 }
 
 export interface GuideMetadata {
@@ -340,12 +375,74 @@ export interface GuideMetadata {
   safetyLevel: "low" | "medium" | "high";
   /** Estimated completion time in minutes */
   estimatedMinutes: number;
+  /** Drying/setting time in minutes if applicable */
+  dryingTimeMinutes: number | null;
   /** Number of people required */
   personsRequired: number;
+  /** Step numbers that require two people */
+  twoPersonSteps: number[];
   /** Skill level needed */
   skillLevel: "none" | "basic_hand_tools" | "power_tools_recommended";
   /** One-sentence purpose statement */
   purposeStatement: string;
+  /** Safety gear suggestions (WI-012) */
+  safetyGear: string[];
+  /** Tool list distinguishing included vs user-provided (WI-013) */
+  tools: {
+    included: ToolEntry[];
+    userProvided: ToolEntry[];
+  };
+  /** Color palette for illustration consistency (IL-005) */
+  colorPalette: {
+    woodPanels: string;
+    hardware: string;
+    backing: string;
+    plastic: string;
+  };
+}
+
+export interface BeforeYouBegin {
+  /** Workspace requirements (WI-034) */
+  workspace: string;
+  /** Preconditions to check */
+  preconditions: string[];
+  /** Common mistakes to avoid (WI-035) */
+  commonMistakes: string[];
+}
+
+export interface FinishingUp {
+  /** Tighten check instructions (WI-007) */
+  tightenCheck: string | null;
+  /** Wall anchoring advisory (WI-019) */
+  wallAnchoring: string | null;
+  /** Level check instructions */
+  levelCheck: string | null;
+  /** Cleanup instructions */
+  cleanup: string | null;
+  /** Usage tips */
+  usageTips: string[];
+}
+
+export interface TermGlossaryEntry {
+  /** Term as used in the guide */
+  term: string;
+  /** Canonical name (e.g., "cam lock" not "cam bolt") */
+  definition: string;
+}
+
+export interface EnforcementSummary {
+  /** Total steps in the enforced guide */
+  totalSteps: number;
+  /** Number of steps that were rewritten */
+  stepsRewritten: number;
+  /** Number of safety callouts added by enforcement */
+  safetyCalloutsAdded: number;
+  /** Number of two-person steps flagged */
+  twoPersonStepsFlagged: number;
+  /** Number of steps marked needsReview */
+  needsReviewCount: number;
+  /** WI-xxx rule IDs that were actively enforced */
+  rulesApplied: string[];
 }
 
 // ============================================================

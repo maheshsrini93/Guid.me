@@ -155,7 +155,7 @@ describe("validateGuide", () => {
       steps: [
         makeValidStep({
           instruction: "Insert the sharp metal bracket into the slot.",
-          safetyCallout: null,
+          safetyCallouts: [],
         }),
         makeValidStep2(),
       ],
@@ -300,7 +300,7 @@ describe("validateGuide", () => {
     const guide = makeValidGuide({
       steps: [
         makeValidStep({
-          safetyCallout: { severity: "danger", text: "Risk of electric shock." },
+          safetyCallouts: [{ severity: "danger", text: "Risk of electric shock." }],
         }),
         makeValidStep2(),
       ],

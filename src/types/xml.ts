@@ -38,7 +38,7 @@ export interface XmlTool {
 }
 
 export interface XmlWarning {
-  severity: "caution" | "warning" | "danger";
+  severity: "notice" | "caution" | "warning" | "danger";
   text: string;
 }
 

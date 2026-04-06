@@ -140,13 +140,13 @@ function assembleWorkInstruction(
   const warnings: XmlWarning[] = [];
   const warningSet = new Set<string>();
   for (const step of guide.steps) {
-    if (step.safetyCallout) {
-      const key = `${step.safetyCallout.severity}:${step.safetyCallout.text}`;
+    for (const callout of step.safetyCallouts) {
+      const key = `${callout.severity}:${callout.text}`;
       if (!warningSet.has(key)) {
         warningSet.add(key);
         warnings.push({
-          severity: step.safetyCallout.severity,
-          text: step.safetyCallout.text,
+          severity: callout.severity,
+          text: callout.text,
         });
       }
     }
@@ -172,7 +172,7 @@ function assembleWorkInstruction(
 
   return {
     metadata: {
-      title: guide.guideMetadata.purposeStatement,
+      title: guide.guideMetadata.title || guide.guideMetadata.purposeStatement,
       domain: state.composedGuide?.metadata?.skillLevel ?? "consumer",
       safetyLevel: safetyReview.recommendedSafetyLevel,
       estimatedMinutes: guide.guideMetadata.estimatedMinutes,
@@ -234,10 +234,8 @@ function groupStepsIntoPhases(
       title: step.title,
       instruction: step.instruction,
       parts: step.parts.map((p) => ({ id: p.id, quantity: p.quantity })),
-      tools: [], // Tools are at guide level, not per-step in current schema
-      safety: step.safetyCallout
-        ? [{ severity: step.safetyCallout.severity, text: step.safetyCallout.text }]
-        : [],
+      tools: (step.toolsRequired ?? []).map((t) => ({ name: t })),
+      safety: step.safetyCallouts.map((c) => ({ severity: c.severity, text: c.text })),
       illustrationSrc: illustrationMap.get(String(step.stepNumber)) ?? null,
       twoPersonRequired: step.twoPersonRequired,
       complexity: step.complexity,

@@ -38,7 +38,7 @@ const APPROVED_VERBS: Set<string> = new Set<AllowedVerb>([
 const MAX_SENTENCE_WORDS = 20;
 
 // ============================================================
-// Validators (22+)
+// Validators (32)
 // ============================================================
 
 const validators: Validator[] = [
@@ -175,7 +175,7 @@ const validators: Validator[] = [
       const flags: QualityFlag[] = [];
       const hazardKeywords = /\b(heavy|sharp|hot|electric|chemical|height|ladder|power\s+tool|drill)\b/i;
       for (const step of guide.steps) {
-        if (hazardKeywords.test(step.instruction) && !step.safetyCallout) {
+        if (hazardKeywords.test(step.instruction) && step.safetyCallouts.length === 0) {
           flags.push({
             validator: this.name,
             severity: "error",
@@ -196,7 +196,7 @@ const validators: Validator[] = [
       const twoPersonKeywords = /\b(two.?person|two people|partner|assistant|helper)\b/i;
       for (const step of guide.steps) {
         const mentionsTwoPerson = twoPersonKeywords.test(step.instruction) ||
-          (step.safetyCallout && twoPersonKeywords.test(step.safetyCallout.text));
+          step.safetyCallouts.some((c) => twoPersonKeywords.test(c.text));
         if (mentionsTwoPerson && !step.twoPersonRequired) {
           flags.push({
             validator: this.name,
@@ -347,10 +347,10 @@ const validators: Validator[] = [
     validate(guide) {
       const flags: QualityFlag[] = [];
       const hasDangerCallout = guide.steps.some(
-        (s) => s.safetyCallout?.severity === "danger",
+        (s) => s.safetyCallouts.some((c) => c.severity === "danger"),
       );
       const hasWarningCallout = guide.steps.some(
-        (s) => s.safetyCallout?.severity === "warning",
+        (s) => s.safetyCallouts.some((c) => c.severity === "warning"),
       );
 
       if (hasDangerCallout && guide.guideMetadata.safetyLevel === "low") {
@@ -478,12 +478,10 @@ const validators: Validator[] = [
     validate(guide) {
       const flags: QualityFlag[] = [];
       for (const step of guide.steps) {
-        // Simple check: the primary verb should appear in both title and instruction
         const titleLower = step.title.toLowerCase();
         const verbLower = step.primaryVerb.toLowerCase();
         if (!titleLower.includes(verbLower) && !step.instruction.toLowerCase().startsWith(verbLower)) {
           // Don't flag if instruction starts with the verb (normal case)
-          // Only flag if neither title nor instruction contain the verb
         }
       }
       return flags;
@@ -501,6 +499,216 @@ const validators: Validator[] = [
           severity: "warning",
           stepNumber: null,
           message: `Guide has only ${guide.steps.length} step(s). Most assemblies require more.`,
+        });
+      }
+      return flags;
+    },
+  },
+
+  // ── New validators (v2.0) ──────────────────────────────────
+
+  // 23. Sub-note sentence length
+  {
+    name: "sub-note-length",
+    validate(guide) {
+      const flags: QualityFlag[] = [];
+      for (const step of guide.steps) {
+        for (const note of step.subNotes ?? []) {
+          const wordCount = note.trim().split(/\s+/).length;
+          if (wordCount > MAX_SENTENCE_WORDS) {
+            flags.push({
+              validator: this.name,
+              severity: "warning",
+              stepNumber: step.stepNumber,
+              message: `Sub-note has ${wordCount} words (max ${MAX_SENTENCE_WORDS}): "${note.slice(0, 50)}..."`,
+            });
+          }
+        }
+      }
+      return flags;
+    },
+  },
+
+  // 24. Confirmation cue on complex steps
+  {
+    name: "confirmation-cue-present",
+    validate(guide) {
+      const flags: QualityFlag[] = [];
+      for (const step of guide.steps) {
+        if (step.complexity === "complex" && !step.confirmationCue) {
+          flags.push({
+            validator: this.name,
+            severity: "warning",
+            stepNumber: step.stepNumber,
+            message: `Complex step is missing a confirmationCue`,
+          });
+        }
+      }
+      return flags;
+    },
+  },
+
+  // 25. Illustration prompt present
+  {
+    name: "illustration-prompt-present",
+    validate(guide) {
+      const flags: QualityFlag[] = [];
+      for (const step of guide.steps) {
+        if (!step.illustrationPrompt || step.illustrationPrompt.trim().length === 0) {
+          flags.push({
+            validator: this.name,
+            severity: "error",
+            stepNumber: step.stepNumber,
+            message: `Step is missing illustrationPrompt`,
+          });
+        }
+      }
+      return flags;
+    },
+  },
+
+  // 26. Illustration complexity matches step complexity
+  {
+    name: "illustration-complexity-match",
+    validate(guide) {
+      const flags: QualityFlag[] = [];
+      for (const step of guide.steps) {
+        if (step.illustrationComplexity !== step.complexity) {
+          flags.push({
+            validator: this.name,
+            severity: "info",
+            stepNumber: step.stepNumber,
+            message: `illustrationComplexity "${step.illustrationComplexity}" differs from step complexity "${step.complexity}"`,
+          });
+        }
+      }
+      return flags;
+    },
+  },
+
+  // 27. Needs-review count summary
+  {
+    name: "needs-review-count",
+    validate(guide) {
+      const flags: QualityFlag[] = [];
+      const count = guide.steps.filter((s) => s.needsReview).length;
+      if (count > 0) {
+        flags.push({
+          validator: this.name,
+          severity: "info",
+          stepNumber: null,
+          message: `${count} step(s) flagged as needsReview — manual verification recommended`,
+        });
+      }
+      return flags;
+    },
+  },
+
+  // 28. Difficulty flag validity
+  {
+    name: "difficulty-flag-validity",
+    validate(guide) {
+      const flags: QualityFlag[] = [];
+      const validFlags = new Set(["tricky", "precision", null]);
+      for (const step of guide.steps) {
+        if (step.difficultyFlag !== null && !validFlags.has(step.difficultyFlag)) {
+          flags.push({
+            validator: this.name,
+            severity: "error",
+            stepNumber: step.stepNumber,
+            message: `Invalid difficultyFlag "${step.difficultyFlag}". Must be "tricky", "precision", or null`,
+          });
+        }
+      }
+      return flags;
+    },
+  },
+
+  // 29. Checkpoint note consistency
+  {
+    name: "checkpoint-note-consistency",
+    validate(guide) {
+      const flags: QualityFlag[] = [];
+      for (const step of guide.steps) {
+        if (step.isCheckpoint && !step.checkpointNote) {
+          flags.push({
+            validator: this.name,
+            severity: "warning",
+            stepNumber: step.stepNumber,
+            message: `Step is marked as checkpoint but has no checkpointNote`,
+          });
+        }
+      }
+      return flags;
+    },
+  },
+
+  // 30. Enforcement summary consistency
+  {
+    name: "enforcement-summary-consistency",
+    validate(guide) {
+      const flags: QualityFlag[] = [];
+      if (guide.enforcementSummary) {
+        if (guide.enforcementSummary.totalSteps !== guide.steps.length) {
+          flags.push({
+            validator: this.name,
+            severity: "error",
+            stepNumber: null,
+            message: `enforcementSummary.totalSteps (${guide.enforcementSummary.totalSteps}) does not match actual step count (${guide.steps.length})`,
+          });
+        }
+      }
+      return flags;
+    },
+  },
+
+  // 31. Before-you-begin presence
+  {
+    name: "before-you-begin-present",
+    validate(guide) {
+      const flags: QualityFlag[] = [];
+      if (!guide.beforeYouBegin || !guide.beforeYouBegin.workspace || guide.beforeYouBegin.workspace.trim().length === 0) {
+        flags.push({
+          validator: this.name,
+          severity: "error",
+          stepNumber: null,
+          message: `beforeYouBegin.workspace is missing or empty`,
+        });
+      }
+      return flags;
+    },
+  },
+
+  // 32. Metadata title format
+  {
+    name: "metadata-title-format",
+    validate(guide) {
+      const flags: QualityFlag[] = [];
+      const meta = guide.guideMetadata;
+      if (meta.title) {
+        if (meta.title.length > 60) {
+          flags.push({
+            validator: this.name,
+            severity: "warning",
+            stepNumber: null,
+            message: `Guide title exceeds 60 characters (${meta.title.length}): "${meta.title}"`,
+          });
+        }
+        const startsWithVerb = /^(Assemble|Build|Install|Set Up)\b/i.test(meta.title);
+        if (!startsWithVerb) {
+          flags.push({
+            validator: this.name,
+            severity: "warning",
+            stepNumber: null,
+            message: `Guide title should start with Assemble, Build, Install, or Set Up`,
+          });
+        }
+      } else {
+        flags.push({
+          validator: this.name,
+          severity: "error",
+          stepNumber: null,
+          message: `Guide title is missing from metadata`,
         });
       }
       return flags;

@@ -1,4 +1,4 @@
-import { FLASH_MODEL } from "@/lib/gemini/models";
+import { PRO_MODEL } from "@/lib/gemini/models";
 import type { EnforcedGuide } from "@/types/agents";
 import { AgentValidationError, type AgentConfig } from "../types";
 import { guidelineEnforcerSchema } from "../schemas/guideline-enforcer.schema";
@@ -12,11 +12,10 @@ export const guidelineEnforcerConfig: AgentConfig<EnforcedGuide> = {
   name: "guideline-enforcer",
   displayName: "Guideline Enforcer",
   executionOrder: 4,
-  defaultModel: FLASH_MODEL,
-  // No escalation for Enforcer
+  defaultModel: PRO_MODEL,
 
   generationOptions: {
-    temperature: 0.2, // Low temperature for deterministic compliance
+    temperature: 0.1, // Near-deterministic for compliance rewriting
     maxOutputTokens: 65536,
   },
 
@@ -54,7 +53,8 @@ export const guidelineEnforcerConfig: AgentConfig<EnforcedGuide> = {
 
   summarize(output) {
     const verbs = new Set(output.steps.map((s) => s.primaryVerb));
-    const safetyCount = output.steps.filter((s) => s.safetyCallout).length;
-    return `Enforced ${output.steps.length} steps using ${verbs.size} verb(s), ${safetyCount} safety callout(s), safety: ${output.guideMetadata.safetyLevel}`;
+    const safetyCount = output.steps.reduce((n, s) => n + s.safetyCallouts.length, 0);
+    const reviewCount = output.steps.filter((s) => s.needsReview).length;
+    return `Enforced ${output.steps.length} steps using ${verbs.size} verb(s), ${safetyCount} safety callout(s), ${reviewCount} needs-review, safety: ${output.guideMetadata.safetyLevel}`;
   },
 };
