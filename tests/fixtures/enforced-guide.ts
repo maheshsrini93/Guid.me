@@ -85,7 +85,7 @@ export function makeValidStep2(overrides: Partial<EnforcedStep> = {}): EnforcedS
 
 export function makeValidMetadata(overrides: Partial<GuideMetadata> = {}): GuideMetadata {
   return {
-    title: "Assemble the KALLAX Bookshelf",
+    title: "Assemble the KALLAX Shelf Unit",
     safetyLevel: "low",
     estimatedMinutes: 30,
     dryingTimeMinutes: null,
@@ -200,6 +200,7 @@ export function makeSafetyReview(overrides: Partial<SafetyReviewResult> = {}): S
 export function makeSafetyIssue(overrides: Partial<SafetyIssue> = {}): SafetyIssue {
   return {
     severity: "warning",
+    coverage: "documented",
     stepNumber: 1,
     hazardType: "sharp_edge",
     description: "Sharp edges on metal bracket.",

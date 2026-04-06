@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
-export function Logo() {
+export function Logo({ className }: { className?: string }) {
   return (
-    <Link href="/" className="flex items-center gap-1.5">
-      <span className="text-xl font-bold tracking-tight">Guid</span>
-      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+    <Link href="/" className={cn("flex items-center gap-2 text-xl font-bold tracking-tight", className)}>
+      <span>Guid</span>
+      <div className="h-2 w-2 rounded-full bg-primary" />
     </Link>
   );
 }

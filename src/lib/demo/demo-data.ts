@@ -530,14 +530,14 @@ export const DEMO_ENFORCED_GUIDE: EnforcedGuide = {
     },
   ],
   guideMetadata: {
-    title: "Assemble the Bookshelf",
+    title: "Assemble the BJÖRKUDDEN Bookshelf",
     safetyLevel: "medium",
     estimatedMinutes: 25,
     dryingTimeMinutes: null,
     personsRequired: 2,
     twoPersonSteps: [3],
     skillLevel: "basic_hand_tools",
-    purposeStatement: "To assemble the bookshelf unit following the manufacturer instructions.",
+    purposeStatement: "This guide walks you through assembling the BJÖRKUDDEN bookshelf from start to finish.",
     safetyGear: ["We recommend gloves when handling panels to avoid splinters."],
     tools: {
       included: [],
@@ -624,6 +624,7 @@ export const DEMO_SAFETY_REVIEW: SafetyReviewResult = {
   issues: [
     {
       severity: "warning",
+      coverage: "documented",
       stepNumber: 3,
       hazardType: "heavy_lift",
       description: "Side panel requires two-person lift. Warning callout is present.",
@@ -631,6 +632,7 @@ export const DEMO_SAFETY_REVIEW: SafetyReviewResult = {
     },
     {
       severity: "warning",
+      coverage: "documented",
       stepNumber: null,
       hazardType: "tip_over_risk",
       description: "Assembled bookshelf should be wall-anchored to prevent tip-over.",
