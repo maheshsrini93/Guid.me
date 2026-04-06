@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, ArrowRight, RefreshCw, XCircle } from "lucide-react";
 import { useEventSource, type AgentName, type AgentState } from "@/hooks/use-event-source";
@@ -26,8 +26,9 @@ const AGENT_ORDER: AgentName[] = [
 export function PipelineMonitor({ jobId }: { jobId: string }) {
   const router = useRouter();
   const state = useEventSource(`/api/jobs/${jobId}/sse`);
-  const [selectedAgent, setSelectedAgent] = useState<AgentState | null>(null);
+  const [selectedAgentName, setSelectedAgentName] = useState<AgentName | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [executionData, setExecutionData] = useState<Record<string, { promptSent?: string; responseReceived?: string }>>({});
 
   useEffect(() => {
     if (state.status === "running") {
@@ -35,6 +36,33 @@ export function PipelineMonitor({ jobId }: { jobId: string }) {
       return () => clearInterval(interval);
     }
   }, [state.status]);
+
+  // Fetch execution data (prompt/response) when pipeline finishes
+  const fetchExecutions = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/jobs/${jobId}`, { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.executions) {
+        const mapped: Record<string, { promptSent?: string; responseReceived?: string }> = {};
+        for (const exec of data.executions) {
+          mapped[exec.agentName] = {
+            promptSent: exec.promptSent ?? undefined,
+            responseReceived: exec.responseReceived ?? undefined,
+          };
+        }
+        setExecutionData(mapped);
+      }
+    } catch {
+      // Silently ignore — drawer will show fallback
+    }
+  }, [jobId]);
+
+  useEffect(() => {
+    if (state.status === "completed" || state.status === "failed") {
+      fetchExecutions();
+    }
+  }, [state.status, fetchExecutions]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -49,6 +77,14 @@ export function PipelineMonitor({ jobId }: { jobId: string }) {
   const handleRetry = async () => {
     await fetch(`/api/jobs/${jobId}/retry`, { method: "POST", cache: "no-store" });
   };
+
+  // Build enriched agent state for the selected agent
+  const selectedAgent: AgentState | null = selectedAgentName
+    ? {
+        ...state.agents[selectedAgentName],
+        ...executionData[selectedAgentName],
+      }
+    : null;
 
   return (
     <div className="space-y-8">
@@ -133,11 +169,11 @@ export function PipelineMonitor({ jobId }: { jobId: string }) {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {AGENT_ORDER.map((agentName) => (
-          <AgentCard key={agentName} agent={state.agents[agentName]} onClick={() => setSelectedAgent(state.agents[agentName])} />
+          <AgentCard key={agentName} agent={state.agents[agentName]} onClick={() => setSelectedAgentName(agentName)} />
         ))}
       </div>
 
-      <DetailDrawer agent={selectedAgent} open={!!selectedAgent} onOpenChange={(open) => !open && setSelectedAgent(null)} />
+      <DetailDrawer agent={selectedAgent} open={!!selectedAgentName} onOpenChange={(open) => !open && setSelectedAgentName(null)} />
     </div>
   );
 }
