@@ -1,44 +1,36 @@
 "use client";
 
+import { Moon, Sun } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
-import { Sun, Moon } from "lucide-react";
 
 export function ThemeToggle() {
-  const [dark, setDark] = useState(false);
+  const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    setDark(document.documentElement.classList.contains("dark"));
+    setIsDark(document.documentElement.classList.contains("dark"));
   }, []);
 
-  const toggle = () => {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    try {
-      localStorage.setItem("theme", next ? "dark" : "light");
-    } catch {
-      // localStorage unavailable
+  const toggleTheme = () => {
+    const newTheme = !isDark;
+    setIsDark(newTheme);
+    if (newTheme) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
     }
   };
 
-  // Avoid hydration mismatch — render nothing until mounted
-  if (!mounted) {
-    return <div className="w-9 h-9" />;
-  }
+  if (!mounted) return <div className="h-9 w-9" />;
 
   return (
-    <button
-      onClick={toggle}
-      className="inline-flex items-center justify-center w-9 h-9 rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-    >
-      {dark ? (
-        <Sun className="w-4 h-4 text-amber-400" />
-      ) : (
-        <Moon className="w-4 h-4 text-slate-600" />
-      )}
-    </button>
+    <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full">
+      {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+      <span className="sr-only">Toggle theme</span>
+    </Button>
   );
 }

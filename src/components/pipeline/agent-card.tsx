@@ -1,235 +1,86 @@
 "use client";
 
-import {
-  FileText,
-  Eye,
-  Pen,
-  Shield,
-  CheckCircle,
-  AlertTriangle,
-  Image,
-  Code,
-  Check,
-  XCircle,
-  type LucideIcon,
-} from "lucide-react";
+import { FileText, Eye, Pen, Shield, CheckCircle, AlertTriangle, Image as ImageIcon, Code, Loader2 } from "lucide-react";
+import type { AgentState, AgentName } from "@/hooks/use-event-source";
+import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import type { AgentName } from "@/lib/agents/types";
-import type { AgentState } from "@/hooks/use-event-source";
 
-// ============================================================
-// Agent Visual Config
-// ============================================================
-
-interface AgentVisualConfig {
-  icon: LucideIcon;
-  color: string;
-  borderColor: string;
-  iconColor: string;
-  bgColor: string;
-}
-
-const AGENT_VISUALS: Record<AgentName, AgentVisualConfig> = {
-  "document-extractor": {
-    icon: FileText,
-    color: "slate",
-    borderColor: "border-l-slate-500",
-    iconColor: "text-slate-500",
-    bgColor: "bg-slate-50 dark:bg-slate-900/50",
-  },
-  "vision-analyzer": {
-    icon: Eye,
-    color: "blue",
-    borderColor: "border-l-blue-500",
-    iconColor: "text-blue-500",
-    bgColor: "bg-blue-50 dark:bg-blue-900/50",
-  },
-  "instruction-composer": {
-    icon: Pen,
-    color: "violet",
-    borderColor: "border-l-violet-500",
-    iconColor: "text-violet-500",
-    bgColor: "bg-violet-50 dark:bg-violet-900/50",
-  },
-  "guideline-enforcer": {
-    icon: Shield,
-    color: "indigo",
-    borderColor: "border-l-indigo-500",
-    iconColor: "text-indigo-500",
-    bgColor: "bg-indigo-50 dark:bg-indigo-900/50",
-  },
-  "quality-reviewer": {
-    icon: CheckCircle,
-    color: "emerald",
-    borderColor: "border-l-emerald-500",
-    iconColor: "text-emerald-500",
-    bgColor: "bg-emerald-50 dark:bg-emerald-900/50",
-  },
-  "safety-reviewer": {
-    icon: AlertTriangle,
-    color: "amber",
-    borderColor: "border-l-amber-500",
-    iconColor: "text-amber-500",
-    bgColor: "bg-amber-50 dark:bg-amber-900/50",
-  },
-  "illustration-generator": {
-    icon: Image,
-    color: "fuchsia",
-    borderColor: "border-l-fuchsia-500",
-    iconColor: "text-fuchsia-500",
-    bgColor: "bg-fuchsia-50 dark:bg-fuchsia-900/50",
-  },
-  "xml-assembler": {
-    icon: Code,
-    color: "cyan",
-    borderColor: "border-l-cyan-500",
-    iconColor: "text-cyan-500",
-    bgColor: "bg-cyan-50 dark:bg-cyan-900/50",
-  },
+const AGENT_CONFIG: Record<AgentName, { icon: React.ElementType; color: string; bg: string }> = {
+  "document-extractor": { icon: FileText, color: "text-slate-500", bg: "bg-slate-500/10" },
+  "vision-analyzer": { icon: Eye, color: "text-blue-500", bg: "bg-blue-500/10" },
+  "instruction-composer": { icon: Pen, color: "text-violet-500", bg: "bg-violet-500/10" },
+  "guideline-enforcer": { icon: Shield, color: "text-indigo-500", bg: "bg-indigo-500/10" },
+  "quality-reviewer": { icon: CheckCircle, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+  "safety-reviewer": { icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-500/10" },
+  "illustration-generator": { icon: ImageIcon, color: "text-fuchsia-500", bg: "bg-fuchsia-500/10" },
+  "xml-assembler": { icon: Code, color: "text-cyan-500", bg: "bg-cyan-500/10" },
 };
 
-const AGENT_ORDER: Record<AgentName, number> = {
-  "document-extractor": 1,
-  "vision-analyzer": 2,
-  "instruction-composer": 3,
-  "guideline-enforcer": 4,
-  "quality-reviewer": 5,
-  "safety-reviewer": 6,
-  "illustration-generator": 7,
-  "xml-assembler": 8,
-};
+export function AgentCard({ agent, onClick }: { agent: AgentState; onClick: () => void }) {
+  const config = AGENT_CONFIG[agent.name];
+  const Icon = config.icon;
 
-// ============================================================
-// Component
-// ============================================================
-
-interface AgentCardProps {
-  agent: AgentState;
-  onClick?: () => void;
-}
-
-function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  const seconds = ms / 1000;
-  if (seconds < 60) return `${seconds.toFixed(1)}s`;
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.round(seconds % 60);
-  return `${minutes}m ${remainingSeconds}s`;
-}
-
-function formatCost(usd: number): string {
-  return `$${usd.toFixed(4)}`;
-}
-
-export function AgentCard({ agent, onClick }: AgentCardProps) {
-  const visuals = AGENT_VISUALS[agent.name];
-  const order = AGENT_ORDER[agent.name];
-  const Icon = visuals.icon;
+  const isIdle = agent.status === "idle";
+  const isActive = agent.status === "active";
+  const isComplete = agent.status === "complete";
+  const isError = agent.status === "error";
 
   return (
-    <button
-      onClick={onClick}
+    <Card
       className={cn(
-        "w-full text-left rounded-lg border bg-card p-4 transition-all duration-200",
-        "hover:shadow-md hover:bg-slate-50 dark:hover:bg-slate-800/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
-        agent.status === "idle" &&
-          "border-solid border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50",
-        agent.status === "active" &&
-          `border-l-4 ${visuals.borderColor} border-slate-200 dark:border-slate-800 shadow-sm`,
-        agent.status === "complete" &&
-          "border-emerald-200 dark:border-emerald-800 border-l-4 border-l-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20",
-        agent.status === "error" &&
-          "border-l-4 border-l-rose-500 border-slate-200 dark:border-slate-800",
+        "relative cursor-pointer overflow-hidden transition-all hover:border-primary/50 hover:shadow-md",
+        isActive && "border-primary/50 shadow-sm ring-1 ring-primary/20",
+        isError && "border-destructive/50"
       )}
+      onClick={onClick}
     >
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-2">
-        {/* Status indicator */}
-        <div
-          className={cn(
-            "flex items-center justify-center w-9 h-9 rounded-md",
-            agent.status === "idle" && "bg-slate-100 dark:bg-slate-800",
-            agent.status === "active" && visuals.bgColor,
-            agent.status === "complete" &&
-              "bg-emerald-50 dark:bg-emerald-900/50",
-            agent.status === "error" && "bg-rose-50 dark:bg-rose-900/50",
-          )}
-        >
-          {agent.status === "complete" ? (
-            <Check className="w-4 h-4 text-emerald-500" />
-          ) : agent.status === "error" ? (
-            <XCircle className="w-4 h-4 text-rose-500" />
-          ) : (
-            <Icon
+      {isActive && (
+        <div className="absolute inset-x-0 top-0 h-1 animate-pulse bg-gradient-to-r from-transparent via-primary to-transparent" />
+      )}
+
+      <CardContent className="p-5">
+        <div className="mb-4 flex items-start justify-between">
+          <div className={cn("flex h-10 w-10 items-center justify-center rounded-none", config.bg, config.color, isIdle && "bg-muted text-muted-foreground")}>
+            <Icon className="h-5 w-5" />
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isActive && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+            <div
               className={cn(
-                "w-4 h-4",
-                agent.status === "idle"
-                  ? "text-slate-400 dark:text-slate-600"
-                  : visuals.iconColor,
+                "h-2.5 w-2.5 rounded-full",
+                isIdle && "bg-muted-foreground/30",
+                isActive && "animate-pulse bg-primary",
+                isComplete && "bg-emerald-500",
+                isError && "bg-destructive"
               )}
             />
-          )}
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground font-mono">
-              {order}
-            </span>
-            <span className="text-sm font-medium truncate">
-              {agent.displayName}
-            </span>
           </div>
         </div>
 
-        {/* Active pulse dot */}
-        {agent.status === "active" && (
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500" />
-          </span>
-        )}
-      </div>
+        <h3 className={cn("font-semibold tracking-tight", isIdle && "text-muted-foreground")}>{agent.displayName}</h3>
 
-      {/* Progress bar (active only) */}
-      {agent.status === "active" && (
-        <div className="mb-2">
-          <Progress value={agent.progress} className="h-1" />
-        </div>
-      )}
-
-      {/* Status message */}
-      {agent.message && agent.status !== "idle" && (
-        <p
-          className={cn(
-            "text-xs",
-            agent.status === "error"
-              ? "text-rose-700 dark:text-rose-300 line-clamp-2"
-              : "text-muted-foreground truncate",
-          )}
-        >
-          {agent.message}
-        </p>
-      )}
-
-      {/* Badges (complete only) */}
-      {agent.status === "complete" && (
-        <div className="flex items-center gap-3 mt-2">
-          {agent.durationMs != null && (
-            <span className="text-xs text-muted-foreground font-mono">
-              {formatDuration(agent.durationMs)}
+        <div className="mt-4 space-y-3">
+          <div className="flex items-center justify-between text-xs">
+            <span className="line-clamp-1 flex-1 pr-2 text-muted-foreground" title={agent.message}>
+              {agent.message}
             </span>
-          )}
-          {agent.costUsd != null && (
-            <span className="text-xs text-muted-foreground font-mono">
-              {formatCost(agent.costUsd)}
+            {isActive && <span className="font-mono font-medium text-primary">{agent.progress}%</span>}
+          </div>
+
+          <Progress value={agent.progress} className={cn("h-1.5", isIdle && "opacity-30")} />
+
+          <div className="flex items-center justify-between pt-1 text-xs font-medium">
+            <span className={cn("text-muted-foreground", isComplete && "text-foreground")}>
+              {agent.durationMs ? `${(agent.durationMs / 1000).toFixed(1)}s` : "--"}
             </span>
-          )}
+            <span className={cn("font-mono text-muted-foreground", isComplete && "text-emerald-600 dark:text-emerald-400")}>
+              {agent.costUsd !== undefined ? `$${agent.costUsd.toFixed(4)}` : "--"}
+            </span>
+          </div>
         </div>
-      )}
-    </button>
+      </CardContent>
+    </Card>
   );
 }
-
-export { AGENT_VISUALS, AGENT_ORDER, formatDuration, formatCost };
