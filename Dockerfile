@@ -1,5 +1,5 @@
-# ── Stage 1: Install dependencies ──────────────────────────────────
-FROM node:22-slim AS deps
+# ── Stage 1: Install dependencies and build ───────────────────────
+FROM node:22-slim AS builder
 WORKDIR /app
 
 # Install build tools for better-sqlite3 native compilation
@@ -8,22 +8,16 @@ RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt
 # Enable pnpm via corepack
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
+# Install dependencies (cached layer)
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-# ── Stage 2: Build the application ────────────────────────────────
-FROM node:22-slim AS builder
-WORKDIR /app
-
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
-COPY --from=deps /app/node_modules ./node_modules
+# Copy source and build
 COPY . .
-
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
 
-# ── Stage 3: Production runner ────────────────────────────────────
+# ── Stage 2: Production runner ────────────────────────────────────
 FROM node:22-slim AS runner
 WORKDIR /app
 
