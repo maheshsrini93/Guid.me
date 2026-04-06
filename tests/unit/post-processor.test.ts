@@ -150,56 +150,56 @@ describe("postProcess", () => {
       const guide = makeValidGuide({
         steps: [
           makeValidStep({
-            safetyCallout: { severity: "caution", text: "risk of electric shock" },
+            safetyCallouts: [{ severity: "caution", text: "risk of electric shock" }],
           }),
           makeValidStep({ stepNumber: 2 }),
         ],
       });
 
       const result = postProcess(guide);
-      expect(result.steps[0].safetyCallout?.severity).toBe("danger");
+      expect(result.steps[0].safetyCallouts[0]?.severity).toBe("danger");
     });
 
     it("upgrades severity to 'warning' when text mentions 'heavy'", () => {
       const guide = makeValidGuide({
         steps: [
           makeValidStep({
-            safetyCallout: { severity: "caution", text: "heavy component" },
+            safetyCallouts: [{ severity: "caution", text: "heavy component" }],
           }),
           makeValidStep({ stepNumber: 2 }),
         ],
       });
 
       const result = postProcess(guide);
-      expect(result.steps[0].safetyCallout?.severity).toBe("warning");
+      expect(result.steps[0].safetyCallouts[0]?.severity).toBe("warning");
     });
 
     it("appends a period if text does not end with one", () => {
       const guide = makeValidGuide({
         steps: [
           makeValidStep({
-            safetyCallout: { severity: "caution", text: "handle with care" },
+            safetyCallouts: [{ severity: "caution", text: "handle with care" }],
           }),
           makeValidStep({ stepNumber: 2 }),
         ],
       });
 
       const result = postProcess(guide);
-      expect(result.steps[0].safetyCallout?.text).toMatch(/\.$/);
+      expect(result.steps[0].safetyCallouts[0]?.text).toMatch(/\.$/);
     });
 
     it("capitalizes the first letter of the text", () => {
       const guide = makeValidGuide({
         steps: [
           makeValidStep({
-            safetyCallout: { severity: "caution", text: "handle with care." },
+            safetyCallouts: [{ severity: "caution", text: "handle with care." }],
           }),
           makeValidStep({ stepNumber: 2 }),
         ],
       });
 
       const result = postProcess(guide);
-      expect(result.steps[0].safetyCallout?.text).toMatch(/^H/);
+      expect(result.steps[0].safetyCallouts[0]?.text).toMatch(/^H/);
     });
   });
 
@@ -328,7 +328,7 @@ describe("postProcess", () => {
           makeValidStep({
             instruction: "Lift the heavy panel onto the frame.",
             primaryVerb: "Lift",
-            safetyCallout: null,
+            safetyCallouts: [],
             parts: [],
           }),
           makeValidStep({ stepNumber: 2 }),
@@ -336,9 +336,9 @@ describe("postProcess", () => {
       });
 
       const result = postProcess(guide);
-      expect(result.steps[0].safetyCallout).not.toBeNull();
-      expect(result.steps[0].safetyCallout?.severity).toBe("warning");
-      expect(result.steps[0].safetyCallout?.text).toContain("Heavy");
+      expect(result.steps[0].safetyCallouts.length).toBeGreaterThan(0);
+      expect(result.steps[0].safetyCallouts[0]?.severity).toBe("warning");
+      expect(result.steps[0].safetyCallouts[0]?.text).toContain("Heavy");
     });
 
     it("auto-generates a danger callout for electrical keywords", () => {
@@ -347,7 +347,7 @@ describe("postProcess", () => {
           makeValidStep({
             instruction: "Attach the electrical wire to the terminal.",
             primaryVerb: "Attach",
-            safetyCallout: null,
+            safetyCallouts: [],
             parts: [],
           }),
           makeValidStep({ stepNumber: 2 }),
@@ -355,18 +355,18 @@ describe("postProcess", () => {
       });
 
       const result = postProcess(guide);
-      expect(result.steps[0].safetyCallout).not.toBeNull();
-      expect(result.steps[0].safetyCallout?.severity).toBe("danger");
+      expect(result.steps[0].safetyCallouts.length).toBeGreaterThan(0);
+      expect(result.steps[0].safetyCallouts[0]?.severity).toBe("danger");
     });
 
-    it("does not overwrite an existing safety callout", () => {
+    it("does not remove an existing safety callout when adding a new one", () => {
       const existingCallout = { severity: "caution" as const, text: "Be careful." };
       const guide = makeValidGuide({
         steps: [
           makeValidStep({
             instruction: "Lift the heavy panel onto the frame.",
             primaryVerb: "Lift",
-            safetyCallout: existingCallout,
+            safetyCallouts: [existingCallout],
             parts: [],
           }),
           makeValidStep({ stepNumber: 2 }),
@@ -374,8 +374,8 @@ describe("postProcess", () => {
       });
 
       const result = postProcess(guide);
-      // Should normalize the existing callout (upgrade to warning) but not replace it
-      expect(result.steps[0].safetyCallout?.text).toBe("Be careful.");
+      // Should normalize the existing callout (upgrade to warning) and keep it
+      expect(result.steps[0].safetyCallouts[0]?.text).toBe("Be careful.");
     });
   });
 

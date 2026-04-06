@@ -105,12 +105,11 @@ export function buildStepPrompt(
     );
   }
 
-  if (step.safetyCallout) {
-    lines.push(
-      "",
-      "## Safety Callout",
-      `- ${step.safetyCallout.severity.toUpperCase()}: ${step.safetyCallout.text}`,
-    );
+  if (step.safetyCallouts && step.safetyCallouts.length > 0) {
+    lines.push("", "## Safety Callouts");
+    for (const callout of step.safetyCallouts) {
+      lines.push(`- ${callout.severity.toUpperCase()}: ${callout.text}`);
+    }
   }
 
   // Part labels

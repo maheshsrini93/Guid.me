@@ -333,11 +333,11 @@ function buildDemoXmlWorkInstruction(jobId: string): XmlWorkInstruction {
   const warnings: XmlWarning[] = [];
   const warningSet = new Set<string>();
   for (const step of guide.steps) {
-    if (step.safetyCallout) {
-      const key = `${step.safetyCallout.severity}:${step.safetyCallout.text}`;
+    for (const callout of step.safetyCallouts) {
+      const key = `${callout.severity}:${callout.text}`;
       if (!warningSet.has(key)) {
         warningSet.add(key);
-        warnings.push({ severity: step.safetyCallout.severity, text: step.safetyCallout.text });
+        warnings.push({ severity: callout.severity, text: callout.text });
       }
     }
   }
@@ -355,10 +355,8 @@ function buildDemoXmlWorkInstruction(jobId: string): XmlWorkInstruction {
       title: step.title,
       instruction: step.instruction,
       parts: step.parts.map((p) => ({ id: p.id, quantity: p.quantity })),
-      tools: [],
-      safety: step.safetyCallout
-        ? [{ severity: step.safetyCallout.severity, text: step.safetyCallout.text }]
-        : [],
+      tools: (step.toolsRequired ?? []).map((t) => ({ name: t })),
+      safety: step.safetyCallouts.map((c) => ({ severity: c.severity, text: c.text })),
       illustrationSrc: `step-${String(step.stepNumber).padStart(3, "0")}.png`,
       twoPersonRequired: step.twoPersonRequired,
       complexity: step.complexity,
@@ -371,7 +369,7 @@ function buildDemoXmlWorkInstruction(jobId: string): XmlWorkInstruction {
 
   return {
     metadata: {
-      title: guide.guideMetadata.purposeStatement,
+      title: guide.guideMetadata.title || guide.guideMetadata.purposeStatement,
       domain: "consumer",
       safetyLevel: DEMO_SAFETY_REVIEW.recommendedSafetyLevel,
       estimatedMinutes: guide.guideMetadata.estimatedMinutes,

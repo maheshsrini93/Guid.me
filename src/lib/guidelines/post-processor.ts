@@ -1,7 +1,7 @@
-import type { EnforcedGuide, EnforcedStep, AllowedVerb } from "@/types/agents";
+import type { EnforcedGuide, EnforcedStep, AllowedVerb, SafetySeverity } from "@/types/agents";
 
 /**
- * Post-processor (Layer 3): 9+ deterministic transforms applied after AI response.
+ * Post-processor (Layer 3): deterministic transforms applied after AI response.
  * These are rule-based corrections that don't require AI — they enforce formatting,
  * consistency, and style requirements that the LLM might miss.
  */
@@ -22,9 +22,41 @@ const MAX_SENTENCE_WORDS = 20;
 export function postProcess(guide: EnforcedGuide): EnforcedGuide {
   const steps = guide.steps.map((step) => postProcessStep({ ...step }));
 
+  // Normalize step numbering (Transform 7)
+  for (let i = 0; i < steps.length; i++) {
+    steps[i].stepNumber = i + 1;
+  }
+
   return {
     steps,
     guideMetadata: { ...guide.guideMetadata },
+    beforeYouBegin: guide.beforeYouBegin
+      ? {
+          ...guide.beforeYouBegin,
+          commonMistakes: guide.beforeYouBegin.commonMistakes.map(enforceSentenceCase),
+        }
+      : { workspace: "", preconditions: [], commonMistakes: [] },
+    finishingUp: guide.finishingUp
+      ? {
+          ...guide.finishingUp,
+          usageTips: guide.finishingUp.usageTips.map(enforceSentenceCase),
+        }
+      : { tightenCheck: null, wallAnchoring: null, levelCheck: null, cleanup: null, usageTips: [] },
+    terminologyGlossary: guide.terminologyGlossary ?? [],
+    enforcementSummary: guide.enforcementSummary
+      ? {
+          ...guide.enforcementSummary,
+          // Correct totalSteps if it doesn't match
+          totalSteps: steps.length,
+        }
+      : {
+          totalSteps: steps.length,
+          stepsRewritten: 0,
+          safetyCalloutsAdded: 0,
+          twoPersonStepsFlagged: 0,
+          needsReviewCount: 0,
+          rulesApplied: [],
+        },
   };
 }
 
@@ -38,10 +70,8 @@ function postProcessStep(step: EnforcedStep): EnforcedStep {
   // 3. Part ID insertion — ensure format: "name (id, ×quantity)"
   step.instruction = enforcePartReferences(step.instruction, step.parts);
 
-  // 4. Safety tag normalization
-  if (step.safetyCallout) {
-    step.safetyCallout = normalizeSafetyTag(step.safetyCallout);
-  }
+  // 4. Safety tag normalization (array-based)
+  step.safetyCallouts = step.safetyCallouts.map(normalizeSafetyTag);
 
   // 5. Whitespace and formatting cleanup
   step.instruction = cleanWhitespace(step.instruction);
@@ -49,18 +79,48 @@ function postProcessStep(step: EnforcedStep): EnforcedStep {
   // 6. Metric unit enforcement
   step.instruction = enforceMetricUnits(step.instruction);
 
-  // 7. Step numbering normalization (ensure sequential)
-  // (handled at guide level below)
+  // 7. Step numbering normalization (handled at guide level)
 
   // 8. Sentence case enforcement
-  step.instruction = enforceSentenceCase(step.instruction);
+  step.instruction = enforceSentenceCaseText(step.instruction);
 
-  // 9. Hazard keyword detection
-  if (!step.safetyCallout) {
-    const detectedHazard = detectHazardKeywords(step.instruction);
-    if (detectedHazard) {
-      step.safetyCallout = detectedHazard;
+  // 9. Hazard keyword detection (adds to safetyCallouts array)
+  const detectedHazard = detectHazardKeywords(step.instruction);
+  if (detectedHazard && !step.safetyCallouts.some((c) =>
+    c.text.toLowerCase().includes(detectedHazard.text.split(".")[0].toLowerCase().slice(0, 20))
+  )) {
+    step.safetyCallouts.push(detectedHazard);
+  }
+
+  // 10. Sub-note sentence length enforcement
+  step.subNotes = (step.subNotes ?? []).flatMap((note) => {
+    const words = note.trim().split(/\s+/);
+    if (words.length > MAX_SENTENCE_WORDS) {
+      const mid = Math.ceil(words.length / 2);
+      return [words.slice(0, mid).join(" ") + ".", words.slice(mid).join(" ")];
     }
+    return [note];
+  });
+
+  // 11. Illustration prompt sanitization
+  if (step.illustrationPrompt) {
+    step.illustrationPrompt = step.illustrationPrompt.trim();
+  }
+
+  // 12. Confirmation cue formatting
+  if (step.confirmationCue) {
+    let cue = step.confirmationCue.trim();
+    if (cue && !cue.endsWith(".")) cue += ".";
+    if (cue.length > 0) cue = cue.charAt(0).toUpperCase() + cue.slice(1);
+    step.confirmationCue = cue;
+  }
+
+  // 13. Tools deduplication
+  step.toolsRequired = [...new Set(step.toolsRequired ?? [])];
+
+  // 14. Checkpoint consistency
+  if (step.isCheckpoint && !step.checkpointNote) {
+    step.checkpointNote = "Verify your assembly matches the expected state before continuing.";
   }
 
   return step;
@@ -82,13 +142,6 @@ function enforceVerbFirst(instruction: string, primaryVerb: AllowedVerb): string
       const firstWord = trimmed.split(/\s+/)[0].replace(/[.,;:!?]$/, "");
       if (!APPROVED_VERBS.includes(firstWord as AllowedVerb)) {
         return `${primaryVerb} ${trimmed.charAt(0).toLowerCase()}${trimmed.slice(1)}`;
-      }
-    } else {
-      // Subsequent sentences should also start with an approved verb if possible
-      const firstWord = trimmed.split(/\s+/)[0].replace(/[.,;:!?]$/, "");
-      if (!APPROVED_VERBS.includes(firstWord as AllowedVerb)) {
-        // Don't force-fix subsequent sentences — just leave them
-        // The validator will flag these
       }
     }
 
@@ -158,11 +211,11 @@ function enforcePartReferences(
 // ============================================================
 
 function normalizeSafetyTag(
-  callout: { severity: "caution" | "warning" | "danger"; text: string },
-): { severity: "caution" | "warning" | "danger"; text: string } {
+  callout: { severity: SafetySeverity; text: string },
+): { severity: SafetySeverity; text: string } {
   let { severity, text } = callout;
 
-  // Normalize severity based on keywords
+  // Normalize severity based on keywords (only escalate, never downgrade)
   const lowerText = text.toLowerCase();
   if (
     lowerText.includes("electric shock") ||
@@ -172,10 +225,12 @@ function normalizeSafetyTag(
   ) {
     severity = "danger";
   } else if (
-    lowerText.includes("injury") ||
-    lowerText.includes("heavy") ||
-    lowerText.includes("fall") ||
-    lowerText.includes("sharp")
+    severity !== "danger" && (
+      lowerText.includes("injury") ||
+      lowerText.includes("heavy") ||
+      lowerText.includes("fall") ||
+      lowerText.includes("sharp")
+    )
   ) {
     severity = "warning";
   }
@@ -224,7 +279,7 @@ function enforceMetricUnits(instruction: string): string {
 // Transform 8: Sentence case enforcement
 // ============================================================
 
-function enforceSentenceCase(instruction: string): string {
+function enforceSentenceCaseText(instruction: string): string {
   const sentences = splitSentences(instruction);
 
   return sentences
@@ -236,11 +291,19 @@ function enforceSentenceCase(instruction: string): string {
     .join(" ");
 }
 
+function enforceSentenceCase(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed) return trimmed;
+  let result = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+  if (!result.endsWith(".")) result += ".";
+  return result;
+}
+
 // ============================================================
 // Transform 9: Hazard keyword detection
 // ============================================================
 
-const HAZARD_KEYWORDS: { pattern: RegExp; severity: "caution" | "warning" | "danger"; text: string }[] = [
+const HAZARD_KEYWORDS: { pattern: RegExp; severity: SafetySeverity; text: string }[] = [
   { pattern: /\bheavy\b/i, severity: "warning", text: "Heavy component. Use proper lifting technique or get assistance." },
   { pattern: /\bsharp\b/i, severity: "caution", text: "Sharp edges present. Handle with care." },
   { pattern: /\belectri/i, severity: "danger", text: "Electrical components. Ensure power is disconnected." },
@@ -250,7 +313,7 @@ const HAZARD_KEYWORDS: { pattern: RegExp; severity: "caution" | "warning" | "dan
 
 function detectHazardKeywords(
   instruction: string,
-): { severity: "caution" | "warning" | "danger"; text: string } | null {
+): { severity: SafetySeverity; text: string } | null {
   for (const { pattern, severity, text } of HAZARD_KEYWORDS) {
     if (pattern.test(instruction)) {
       return { severity, text };
