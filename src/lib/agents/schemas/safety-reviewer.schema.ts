@@ -46,6 +46,13 @@ export const safetyReviewerSchema: GenerationConfig["responseSchema"] = {
             type: SchemaType.STRING,
             description: "Description of the safety hazard",
           },
+          coverage: {
+            type: SchemaType.STRING,
+            format: "enum",
+            enum: ["documented", "undocumented"],
+            description:
+              "Whether this hazard is already addressed in the work instruction's safety callouts (documented) or missing from the instruction (undocumented)",
+          },
           requiredAction: {
             type: SchemaType.STRING,
             description: "Required action to address the hazard",
@@ -53,6 +60,7 @@ export const safetyReviewerSchema: GenerationConfig["responseSchema"] = {
         },
         required: [
           "severity",
+          "coverage",
           "stepNumber",
           "hazardType",
           "description",

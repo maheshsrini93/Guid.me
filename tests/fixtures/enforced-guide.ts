@@ -120,6 +120,7 @@ export function makeSafetyReview(overrides: Partial<SafetyReviewResult> = {}): S
 export function makeSafetyIssue(overrides: Partial<SafetyIssue> = {}): SafetyIssue {
   return {
     severity: "warning",
+    coverage: "documented",
     stepNumber: 1,
     hazardType: "sharp_edge",
     description: "Sharp edges on metal bracket.",

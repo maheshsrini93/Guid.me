@@ -43,7 +43,7 @@ export function OutputPageClient({ jobId }: { jobId: string }) {
             score: json.guide?.qualityScore ?? 0,
             decision: json.guide?.qualityDecision ?? "unknown",
             issues: json.guide?.qualityIssues ?? [],
-            safetyPassed: (json.guide?.safetyIssues ?? []).length === 0,
+            safetyPassed: !(json.guide?.safetyIssues ?? []).some((i: any) => i.coverage === "undocumented"),
             safetyIssues: json.guide?.safetyIssues ?? [],
           },
           cost: {

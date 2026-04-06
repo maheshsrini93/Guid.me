@@ -422,6 +422,8 @@ export interface SafetyReviewResult {
 export interface SafetyIssue {
   /** Issue severity */
   severity: "warning" | "critical";
+  /** Whether this hazard is already documented in the work instruction's safety callouts */
+  coverage: "documented" | "undocumented";
   /** Step number (null for guide-level issues) */
   stepNumber: number | null;
   /** Hazard type */

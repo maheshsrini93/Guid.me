@@ -66,11 +66,17 @@ export function evaluateQualityGate(
 
 /**
  * Derive a 0-100 safety score from the safety review result.
+ *
+ * Only **undocumented** hazards reduce the score — documented hazards
+ * (already addressed in the work instruction) carry no penalty.
  */
 function calculateSafetyScore(review: SafetyReviewResult): number {
   let score = 100;
 
   for (const issue of review.issues) {
+    // Documented hazards are already visible in the instruction — no penalty
+    if (issue.coverage === "documented") continue;
+
     if (issue.severity === "critical") {
       score -= 15;
     } else {
@@ -78,7 +84,7 @@ function calculateSafetyScore(review: SafetyReviewResult): number {
     }
   }
 
-  // Safety failure is a heavy penalty
+  // Safety failure (undocumented hazards exist) is a heavy penalty
   if (!review.safetyPassed) {
     score = Math.min(score, 50);
   }
@@ -114,13 +120,13 @@ function buildRevisionFeedback(
     }
   }
 
-  // Include critical safety issues
-  const criticalSafety = safetyReview.issues.filter((i) => i.severity === "critical");
-  if (criticalSafety.length > 0) {
-    lines.push("", "## Critical Safety Issues:");
-    for (const issue of criticalSafety) {
+  // Include undocumented safety issues (these are missing from the instruction)
+  const undocumentedSafety = safetyReview.issues.filter((i) => i.coverage === "undocumented");
+  if (undocumentedSafety.length > 0) {
+    lines.push("", "## Undocumented Safety Hazards (must add to instruction):");
+    for (const issue of undocumentedSafety) {
       const stepRef = issue.stepNumber !== null ? `Step ${issue.stepNumber}` : "Guide-level";
-      lines.push(`- [CRITICAL] ${stepRef} (${issue.hazardType}): ${issue.description}`);
+      lines.push(`- [${issue.severity.toUpperCase()}] ${stepRef} (${issue.hazardType}): ${issue.description}`);
       lines.push(`  Required: ${issue.requiredAction}`);
     }
   }

@@ -54,10 +54,14 @@ export function buildSafetyReviewerSystemPrompt(): string {
 - Proper technique reminders for manual tools
 - Eye protection for drilling/cutting
 
+## Coverage Classification
+For every hazard you identify, classify its **coverage**:
+- **"documented"** — the hazard IS already addressed in the work instruction (there is a matching safety callout, two-person flag, warning text, or equivalent measure in the relevant step)
+- **"undocumented"** — the hazard exists but is NOT mentioned or addressed anywhere in the instruction
+
 ## Assessment Logic
-- **safetyPassed = true** if no critical issues found
-- **safetyPassed = false** if ANY critical issue is unaddressed
-- Every identified hazard must have a corresponding safety callout in the instructions
+- **safetyPassed = true** if ALL identified hazards are **documented** in the instruction — even if there are many warnings or critical-severity hazards, as long as they are all visible to the end user
+- **safetyPassed = false** ONLY if there is at least one **undocumented** hazard — a real safety risk that the instruction fails to mention
 
 ## Recommended Safety Level
 - **low**: No significant hazards, basic hand tools only, small/light components
@@ -66,11 +70,12 @@ export function buildSafetyReviewerSystemPrompt(): string {
 
 ## Process
 1. Read every step and identify potential hazards
-2. Check if each hazard has a corresponding safety callout
-3. Verify two-person steps are properly flagged
-4. Check if the guide's safety level matches the actual hazards
-5. Report all issues with severity (warning = should address, critical = must address)
-6. Determine if safety review passes overall`;
+2. For each hazard, check if a corresponding safety callout, warning, or flag exists in the instruction
+3. Classify each issue as "documented" (addressed in instruction) or "undocumented" (missing from instruction)
+4. Verify two-person steps are properly flagged
+5. Check if the guide's safety level matches the actual hazards
+6. Report all issues with severity (warning = should address, critical = must address)
+7. Set safetyPassed = true if every hazard is documented, false if any hazard is undocumented`;
 }
 
 export function buildSafetyReviewerUserPrompt(state: PipelineState): string {
@@ -83,5 +88,6 @@ ${JSON.stringify(enforcedGuide, null, 2)}
 
 Check every step for safety hazards. For each hazard found, verify there is a corresponding safety callout. Report any missing or inadequate safety measures.
 
-Set safetyPassed to false if any critical safety issue is not addressed in the instructions.`;
+For each hazard, set coverage to "documented" if the instruction already addresses it, or "undocumented" if it is missing.
+Set safetyPassed to true if ALL hazards are documented. Set it to false only if ANY hazard is undocumented.`;
 }

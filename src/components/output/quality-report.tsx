@@ -107,26 +107,50 @@ export function QualityReport({ quality }: { quality: any }) {
 
       {quality.safetyIssues && quality.safetyIssues.length > 0 && (
         <div className="space-y-6">
-          <h3 className="border-b pb-2 text-xl font-semibold text-destructive">Safety Violations</h3>
+          <h3 className="border-b pb-2 text-xl font-semibold">Safety Hazards</h3>
           <div className="space-y-4">
-            {quality.safetyIssues.map((issue: any, i: number) => (
-              <div key={i} className="flex items-start gap-4 rounded-none border border-destructive bg-destructive/10 p-4">
-                <ShieldAlert className="mt-0.5 h-5 w-5 text-destructive" />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="destructive" className="text-[10px] uppercase">
-                      {issue.severity}
-                    </Badge>
-                    <span className="text-sm font-medium text-destructive">{issue.hazardType}</span>
-                    {issue.stepNumber && <span className="text-sm font-medium text-destructive">· Step {issue.stepNumber}</span>}
-                  </div>
-                  <p className="mt-2 font-medium text-foreground">{issue.description}</p>
-                  <div className="mt-3 rounded-none bg-destructive/20 p-3 text-sm text-destructive-foreground">
-                    <span className="font-semibold">Required Action:</span> {issue.requiredAction}
+            {quality.safetyIssues.map((issue: any, i: number) => {
+              const isUndocumented = issue.coverage === "undocumented";
+              return (
+                <div
+                  key={i}
+                  className={cn(
+                    "flex items-start gap-4 rounded-none border p-4",
+                    isUndocumented
+                      ? "border-destructive/50 bg-destructive/5"
+                      : "border-emerald-500/20 bg-emerald-500/5"
+                  )}
+                >
+                  {isUndocumented ? (
+                    <ShieldAlert className="mt-0.5 h-5 w-5 text-destructive" />
+                  ) : (
+                    <ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-500" />
+                  )}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={isUndocumented ? "destructive" : "outline"}
+                        className={cn("text-[10px] uppercase", !isUndocumented && "border-emerald-500 text-emerald-500")}
+                      >
+                        {isUndocumented ? "undocumented" : "documented"}
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px] uppercase">
+                        {issue.severity}
+                      </Badge>
+                      <span className="text-sm font-medium text-muted-foreground">{issue.hazardType}</span>
+                      {issue.stepNumber && <span className="text-sm font-medium text-muted-foreground">· Step {issue.stepNumber}</span>}
+                    </div>
+                    <p className="mt-2 font-medium text-foreground">{issue.description}</p>
+                    <div className={cn(
+                      "mt-3 rounded-none p-3 text-sm",
+                      isUndocumented ? "bg-destructive/10" : "bg-emerald-500/5"
+                    )}>
+                      <span className="font-semibold">Required Action:</span> {issue.requiredAction}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

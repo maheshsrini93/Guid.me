@@ -515,6 +515,7 @@ export const DEMO_SAFETY_REVIEW: SafetyReviewResult = {
   issues: [
     {
       severity: "warning",
+      coverage: "documented",
       stepNumber: 3,
       hazardType: "heavy_lift",
       description: "Side panel requires two-person lift. Warning callout is present.",
@@ -522,6 +523,7 @@ export const DEMO_SAFETY_REVIEW: SafetyReviewResult = {
     },
     {
       severity: "warning",
+      coverage: "documented",
       stepNumber: null,
       hazardType: "tip_over_risk",
       description: "Assembled bookshelf should be wall-anchored to prevent tip-over.",
