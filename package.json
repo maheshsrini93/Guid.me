@@ -48,6 +48,9 @@
     "ulid": "^3.0.2",
     "yaml": "^2.8.2"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": ["better-sqlite3"]
+  },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
     "@types/better-sqlite3": "^7.6.13",

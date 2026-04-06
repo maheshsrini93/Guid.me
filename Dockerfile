@@ -9,18 +9,11 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-# Force rebuild better-sqlite3 native addon for this platform
-RUN pnpm rebuild better-sqlite3
-
-# Prepare better-sqlite3 native binding for runner stage
-# Find the .node binary wherever prebuild-install or node-gyp put it
-RUN SQLITE_PKG=$(readlink -f node_modules/better-sqlite3) && \
-    echo "better-sqlite3 resolved to: $SQLITE_PKG" && \
-    find "$SQLITE_PKG" -name "better_sqlite3.node" -type f && \
-    BINDING=$(find "$SQLITE_PKG" -name "better_sqlite3.node" -type f | head -1) && \
-    echo "Found binding at: $BINDING" && \
-    mkdir -p /tmp/native-binding && \
-    cp "$BINDING" /tmp/native-binding/better_sqlite3.node
+# Verify better-sqlite3 native binding was built
+RUN find node_modules -name "better_sqlite3.node" -type f | head -5 && \
+    BINDING=$(find node_modules -name "better_sqlite3.node" -type f | head -1) && \
+    test -n "$BINDING" && echo "Native binding found: $BINDING" && \
+    mkdir -p /tmp/native-binding && cp "$BINDING" /tmp/native-binding/better_sqlite3.node
 
 # Copy source and build
 COPY . .
