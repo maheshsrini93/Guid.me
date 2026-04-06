@@ -334,6 +334,8 @@ export interface SafetyCallout {
 }
 
 export interface GuideMetadata {
+  /** WI-002 compliant title: [Verb] [Product Name], title case, ≤60 chars */
+  title: string;
   /** Overall safety classification */
   safetyLevel: "low" | "medium" | "high";
   /** Estimated completion time in minutes */
@@ -422,6 +424,8 @@ export interface SafetyReviewResult {
 export interface SafetyIssue {
   /** Issue severity */
   severity: "warning" | "critical";
+  /** Whether this hazard is already documented in the work instruction's safety callouts */
+  coverage: "documented" | "undocumented";
   /** Step number (null for guide-level issues) */
   stepNumber: number | null;
   /** Hazard type */

@@ -109,6 +109,11 @@ export const guidelineEnforcerSchema: GenerationConfig["responseSchema"] = {
           enum: ["none", "basic_hand_tools", "power_tools_recommended"],
         },
         purposeStatement: { type: SchemaType.STRING },
+        title: {
+          type: SchemaType.STRING,
+          description:
+            "WI-002 compliant guide title: starts with action verb (Assemble, Build, Install, Set Up), title case, ≤60 chars, includes product name, no brand name. Format: [Verb] [Product Name]",
+        },
       },
       required: [
         "safetyLevel",
@@ -116,6 +121,7 @@ export const guidelineEnforcerSchema: GenerationConfig["responseSchema"] = {
         "personsRequired",
         "skillLevel",
         "purposeStatement",
+        "title",
       ],
     },
   },

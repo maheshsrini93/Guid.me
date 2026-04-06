@@ -1,35 +1,29 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
-interface CostTickerProps {
-  totalCost: number;
-}
-
-export function CostTicker({ totalCost }: CostTickerProps) {
+export function CostTicker({ value }: { value: number }) {
   const [flash, setFlash] = useState(false);
-  const prevCostRef = useRef(totalCost);
+  const [displayValue, setDisplayValue] = useState(value);
 
   useEffect(() => {
-    if (totalCost !== prevCostRef.current) {
-      prevCostRef.current = totalCost;
+    if (value > displayValue) {
       setFlash(true);
-      const timeout = setTimeout(() => setFlash(false), 300);
-      return () => clearTimeout(timeout);
+      setDisplayValue(value);
+      const timer = setTimeout(() => setFlash(false), 500);
+      return () => clearTimeout(timer);
     }
-  }, [totalCost]);
+  }, [value, displayValue]);
 
   return (
     <span
       className={cn(
-        "font-mono text-sm tabular-nums transition-colors duration-300",
-        flash
-          ? "text-indigo-500"
-          : "text-slate-900 dark:text-slate-50",
+        "font-mono text-xl font-semibold transition-colors duration-300",
+        flash ? "text-emerald-500" : "text-foreground"
       )}
     >
-      ${totalCost.toFixed(2)}
+      ${value.toFixed(4)}
     </span>
   );
 }

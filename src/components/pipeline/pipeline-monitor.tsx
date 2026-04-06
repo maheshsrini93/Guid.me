@@ -1,249 +1,143 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { ArrowLeft, ExternalLink, XCircle, Clock, RotateCcw } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { AlertCircle, ArrowRight, RefreshCw, XCircle } from "lucide-react";
+import { useEventSource, type AgentName, type AgentState } from "@/hooks/use-event-source";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useEventSource, AGENT_REGISTRY } from "@/hooks/use-event-source";
-import type { AgentName } from "@/lib/agents/types";
+import { Card, CardContent } from "@/components/ui/card";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { AgentCard } from "./agent-card";
 import { PipelineProgress } from "./pipeline-progress";
 import { CostTicker } from "./cost-ticker";
 import { DetailDrawer } from "./detail-drawer";
-import { StatusBadge } from "@/components/shared/status-badge";
 
-interface PipelineMonitorProps {
-  jobId: string;
-}
+const AGENT_ORDER: AgentName[] = [
+  "document-extractor",
+  "vision-analyzer",
+  "instruction-composer",
+  "guideline-enforcer",
+  "quality-reviewer",
+  "safety-reviewer",
+  "illustration-generator",
+  "xml-assembler",
+];
 
-function formatElapsed(startMs: number): string {
-  const elapsed = Math.floor((Date.now() - startMs) / 1000);
-  const min = Math.floor(elapsed / 60);
-  const sec = elapsed % 60;
-  return `${min}:${sec.toString().padStart(2, "0")}`;
-}
+export function PipelineMonitor({ jobId }: { jobId: string }) {
+  const router = useRouter();
+  const state = useEventSource(`/api/jobs/${jobId}/sse`);
+  const [selectedAgent, setSelectedAgent] = useState<AgentState | null>(null);
+  const [elapsed, setElapsed] = useState(0);
 
-export function PipelineMonitor({ jobId }: PipelineMonitorProps) {
-  const state = useEventSource(jobId);
-  const [selectedAgent, setSelectedAgent] = useState<AgentName | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [elapsed, setElapsed] = useState("0:00");
-  const [startTime] = useState(() => Date.now());
-  const [cancelling, setCancelling] = useState(false);
-  const [retrying, setRetrying] = useState(false);
-
-  // Elapsed timer
   useEffect(() => {
-    if (
-      state.status === "completed" ||
-      state.status === "failed" ||
-      state.status === "cancelled"
-    ) {
-      return;
+    if (state.status === "running") {
+      const interval = setInterval(() => setElapsed((prev) => prev + 1), 1000);
+      return () => clearInterval(interval);
     }
+  }, [state.status]);
 
-    const interval = setInterval(() => {
-      setElapsed(formatElapsed(startTime));
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [state.status, startTime]);
-
-  const handleCardClick = (agentName: AgentName) => {
-    setSelectedAgent(agentName);
-    setDrawerOpen(true);
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
   const handleCancel = async () => {
-    setCancelling(true);
-    try {
-      await fetch(`/api/jobs/${jobId}/cancel`, { method: "POST" });
-    } catch {
-      // ignore
-    } finally {
-      setCancelling(false);
-    }
+    await fetch(`/api/jobs/${jobId}/cancel`, { method: "POST", cache: "no-store" });
   };
 
   const handleRetry = async () => {
-    setRetrying(true);
-    try {
-      const res = await fetch(`/api/jobs/${jobId}/retry`, { method: "POST" });
-      if (res.ok) {
-        // Force page reload to reconnect SSE with fresh state
-        window.location.reload();
-      }
-    } catch {
-      // ignore
-    } finally {
-      setRetrying(false);
-    }
+    await fetch(`/api/jobs/${jobId}/retry`, { method: "POST", cache: "no-store" });
   };
 
-  const isTerminal =
-    state.status === "completed" ||
-    state.status === "failed" ||
-    state.status === "cancelled";
-
-  const isRunning = !isTerminal && state.status !== "pending";
-
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-8 h-14 flex items-center gap-4">
-          <Link
-            href="/"
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </Link>
-
-          <div className="flex-1" />
-
-          <div className="flex items-center gap-4">
-            {/* Elapsed timer */}
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Clock className="w-4 h-4" />
-              <span className="font-mono tabular-nums">{elapsed}</span>
-            </div>
-
-            {/* Cost ticker */}
-            <CostTicker totalCost={state.totalCost} />
-
-            {/* Status badge */}
-            <StatusBadge status={state.status} />
-          </div>
-        </div>
-      </header>
-
-      {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-8 py-6">
-        {/* Pipeline title */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-semibold leading-tight">
-              Pipeline Monitor
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Job {jobId.substring(0, 8)}...
-            </p>
-          </div>
-
+    <div className="space-y-8">
+      <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+        <div>
           <div className="flex items-center gap-3">
-            {isRunning && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCancel}
-                disabled={cancelling}
-              >
-                <XCircle className="w-4 h-4 mr-1.5" />
-                {cancelling ? "Cancelling..." : "Cancel"}
+            <h1 className="text-3xl font-bold tracking-tight">Pipeline Monitor</h1>
+            <StatusBadge status={state.status} />
+            {!state.isConnected && state.status !== "completed" && state.status !== "failed" && (
+              <span className="flex items-center text-sm text-amber-500">
+                <span className="mr-1.5 flex h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+                Reconnecting...
+              </span>
+            )}
+          </div>
+          <p className="mt-1 font-mono text-sm text-muted-foreground">Job ID: {jobId}</p>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col items-end">
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Elapsed</span>
+            <span className="font-mono text-xl font-semibold">{formatTime(elapsed)}</span>
+          </div>
+          <div className="h-10 w-px bg-border" />
+          <div className="flex flex-col items-end">
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Total Cost</span>
+            <CostTicker value={state.totalCost} />
+          </div>
+
+          <div className="ml-4 flex items-center gap-2">
+            {state.status === "running" && (
+              <Button variant="outline" size="sm" onClick={handleCancel}>
+                <XCircle className="mr-2 h-4 w-4" /> Cancel
               </Button>
             )}
-
+            {state.status === "failed" && (
+              <Button variant="outline" size="sm" onClick={handleRetry}>
+                <RefreshCw className="mr-2 h-4 w-4" /> Retry
+              </Button>
+            )}
             {state.status === "completed" && (
-              <Button size="sm" asChild>
-                <Link href={`/output/${jobId}`}>
-                  <ExternalLink className="w-4 h-4 mr-1.5" />
-                  View Output
-                </Link>
+              <Button size="sm" onClick={() => router.push(`/output/${jobId}`)}>
+                View Output <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             )}
           </div>
         </div>
+      </div>
 
-        {/* Progress stepper */}
-        <div className="mb-8">
-          <PipelineProgress agents={state.agents} />
-        </div>
-
-        {/* Completion banner */}
-        {state.status === "completed" && state.qualityScore != null && (
-          <div className="mb-6 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Badge className="bg-emerald-500 text-white">
-                {state.qualityScore}/100
-              </Badge>
-              <span className="text-sm font-medium">
-                Pipeline completed
-                {state.qualityDecision && ` — ${state.qualityDecision}`}
-              </span>
+      {state.status === "completed" && (
+        <div className="flex items-center justify-between rounded-none border border-primary/20 bg-primary/5 p-4 text-primary">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20">
+              <ArrowRight className="h-4 w-4" />
             </div>
-            {state.durationMs != null && (
-              <span className="text-sm text-muted-foreground font-mono">
-                {(state.durationMs / 1000).toFixed(1)}s total
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Cancelled banner */}
-        {state.status === "cancelled" && (
-          <div className="mb-6 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 flex items-center gap-3">
-            <XCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
-            <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
-              Pipeline cancelled by user
-            </span>
-          </div>
-        )}
-
-        {/* Error banner */}
-        {state.status === "failed" && state.error && (
-          <div className="mb-6 rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-100 dark:bg-rose-900/30 p-4 flex items-start gap-3">
-            <XCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-rose-900 dark:text-rose-100">
-                Pipeline failed
-              </p>
-              <p className="text-sm text-rose-800 dark:text-rose-200 mt-1">
-                {state.error}
+            <div>
+              <p className="font-medium">Pipeline completed successfully</p>
+              <p className="text-sm opacity-80">
+                Quality Score: {state.qualityScore} • Decision: <span className="uppercase">{state.qualityDecision}</span>
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRetry}
-              disabled={retrying}
-              className="shrink-0 border-rose-300 dark:border-rose-600 text-rose-700 dark:text-rose-300 hover:bg-rose-200 dark:hover:bg-rose-800"
-            >
-              <RotateCcw className={`w-4 h-4 mr-1.5 ${retrying ? "animate-spin" : ""}`} />
-              {retrying ? "Retrying..." : "Retry"}
-            </Button>
           </div>
-        )}
-
-        {/* Agent cards grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {AGENT_REGISTRY.map(({ name }) => (
-            <AgentCard
-              key={name}
-              agent={state.agents[name]}
-              onClick={() => handleCardClick(name)}
-            />
-          ))}
+          <Button onClick={() => router.push(`/output/${jobId}`)}>View Output</Button>
         </div>
+      )}
 
-        {/* Connection indicator */}
-        {!state.isConnected && isRunning && (
-          <div className="mt-4 text-center">
-            <p className="text-xs text-muted-foreground">
-              Reconnecting to pipeline...
-            </p>
+      {state.status === "failed" && (
+        <div className="flex items-start gap-3 rounded-none border border-destructive/20 bg-destructive/5 p-4 text-destructive">
+          <AlertCircle className="mt-0.5 h-5 w-5" />
+          <div>
+            <p className="font-medium">Pipeline failed</p>
+            <p className="text-sm opacity-80">{state.error || "An unknown error occurred during processing."}</p>
           </div>
-        )}
-      </main>
+        </div>
+      )}
 
-      {/* Detail drawer */}
-      <DetailDrawer
-        agent={selectedAgent ? state.agents[selectedAgent] : null}
-        jobId={jobId}
-        open={drawerOpen}
-        onOpenChange={setDrawerOpen}
-      />
+      <Card className="overflow-hidden">
+        <CardContent className="p-6">
+          <PipelineProgress agents={state.agents} order={AGENT_ORDER} />
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {AGENT_ORDER.map((agentName) => (
+          <AgentCard key={agentName} agent={state.agents[agentName]} onClick={() => setSelectedAgent(state.agents[agentName])} />
+        ))}
+      </div>
+
+      <DetailDrawer agent={selectedAgent} open={!!selectedAgent} onOpenChange={(open) => !open && setSelectedAgent(null)} />
     </div>
   );
 }
