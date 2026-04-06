@@ -305,7 +305,7 @@ async function runPerPage<TOutput>(
     const imageData = await readFile(page.imagePath);
 
     // Call Gemini Vision with retry
-    let result = await withRetry(
+    const result = await withRetry(
       config.name,
       async () => {
         await waitForSlot(config.defaultModel);
