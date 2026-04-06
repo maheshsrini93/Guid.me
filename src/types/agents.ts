@@ -320,6 +320,32 @@ export interface EnforcedStep {
   confidence: number;
   /** True if a rule could not be enforced without guessing */
   needsReview: boolean;
+  /** IL-008: true when 3+ parts connect in a tight area */
+  needsExplodedView?: boolean;
+  /** IL-009: true for small hardware operations needing magnification */
+  needsDetailCallout?: boolean;
+  /** IL-009: what to magnify (e.g., "cam lock insertion") */
+  detailCalloutSubject?: string;
+  /** IL-013: do/don't comparison needed */
+  isOkNok?: boolean;
+  /** IL-013: correct assembly description */
+  okDescription?: string;
+  /** IL-013: incorrect assembly description */
+  nokDescription?: string;
+  /** IL-011: rotation direction ("clockwise" | "counter-clockwise") */
+  rotationDirection?: string;
+  /** IL-011: what rotates (e.g., "cam lock") */
+  rotationTarget?: string;
+  /** IL-011: rotation amount (e.g., "¼ turn", "90°") */
+  rotationAmount?: string;
+  /** IL-010: arrow direction (e.g., "downward", "left-to-right") */
+  arrowDirection?: string;
+  /** IL-010: arrow origin part/location */
+  arrowStart?: string;
+  /** IL-010: arrow destination part/location */
+  arrowEnd?: string;
+  /** IL-015: where two people should grip/support */
+  gripPositions?: string;
   /** Full prompt for illustration generation (IL guidelines) */
   illustrationPrompt: string;
   /** Illustration complexity routing: simple (1-2 parts) or complex (3+ parts) */
@@ -584,6 +610,10 @@ export interface GeneratedIllustration {
   costUsd: number;
   /** Generation duration */
   durationMs: number;
+  /** Complexity tier used for model routing (IL-018) */
+  complexity: "simple" | "complex";
+  /** Which retry attempt succeeded (1-3, per IL-004) */
+  attempt: number;
 }
 
 // ============================================================

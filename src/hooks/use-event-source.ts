@@ -142,15 +142,30 @@ function reducer(state: PipelineMonitorState, action: Action): PipelineMonitorSt
             }
           : state.agents,
       };
-    case "PIPELINE_COMPLETE":
+    case "PIPELINE_COMPLETE": {
+      // Mark any agents still active/idle as complete so progress shows 100%
+      const completedAgents = { ...state.agents };
+      for (const key of Object.keys(completedAgents) as AgentName[]) {
+        const a = completedAgents[key];
+        if (a.status === "active" || a.status === "idle") {
+          completedAgents[key] = {
+            ...a,
+            status: "complete",
+            progress: 100,
+            message: a.status === "idle" ? "Skipped" : "Completed",
+          };
+        }
+      }
       return {
         ...state,
         status: "completed",
+        agents: completedAgents,
         qualityScore: action.payload.qualityScore,
         qualityDecision: action.payload.qualityDecision,
         totalCost: action.payload.totalCostUsd,
         durationMs: action.payload.durationMs,
       };
+    }
     default:
       return state;
   }

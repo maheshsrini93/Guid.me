@@ -1,7 +1,6 @@
 import path from "path";
-import { generateImage } from "@/lib/gemini/client";
-import { IMAGE_MODEL } from "@/lib/gemini/models";
-import { getGuidelinesAsString } from "@/lib/guidelines/loader";
+import { generateImageWithRetry } from "@/lib/gemini/client";
+import { IMAGE_MODEL, IMAGE_PRO_MODEL } from "@/lib/gemini/models";
 import { saveFile, getIllustrationsDir } from "@/lib/utils/file-storage";
 import { generateId } from "@/lib/utils/ulid";
 import type { GeneratedIllustration, StructuredPartRef } from "@/types/agents";
@@ -16,6 +15,7 @@ import {
   PROMPT_VERSION as ILLUSTRATION_PROMPT_VERSION,
   buildPartLabelMap,
   buildStepPrompt,
+  scoreStepComplexity,
 } from "./prompts/illustration-generator";
 
 /**
@@ -64,12 +64,10 @@ class IllustrationGeneratorAgent {
       // 4. Build part label map (consistent across all steps)
       const partLabelMap = buildPartLabelMap(steps);
 
-      // 5. Load guidelines
-      const ilYaml = getGuidelinesAsString("illustrations");
-
-      // Product name from guide metadata
+      // 5. Product name and color palette from guide metadata
       const productName =
         guide.guideMetadata.purposeStatement || "assembly product";
+      const colorPalette = guide.guideMetadata.colorPalette;
 
       // 6. Generate illustrations per step
       const illustrations: GeneratedIllustration[] = [];
@@ -95,7 +93,12 @@ class IllustrationGeneratorAgent {
 
         const stepStart = Date.now();
 
-        // Build prompt
+        // Score complexity and pick model (IL-018)
+        const complexity = scoreStepComplexity(step);
+        const model =
+          complexity === "complex" ? IMAGE_PRO_MODEL : IMAGE_MODEL;
+
+        // Build prompt (v2.0: system instruction + color palette + conditional sections)
         const prompt = buildStepPrompt(
           step,
           i,
@@ -103,11 +106,14 @@ class IllustrationGeneratorAgent {
           partLabelMap,
           productName,
           accumulatedParts,
+          i > 0 ? colorPalette : undefined,
         );
 
-        // Generate image
-        const result = await generateImage(prompt, {
-          model: IMAGE_MODEL,
+        // Generate image with retry (IL-004: up to 3 attempts)
+        const result = await generateImageWithRetry(prompt, {
+          model,
+          temperature: 0.4,
+          maxRetries: 3,
         });
 
         const stepDuration = Date.now() - stepStart;
@@ -120,7 +126,7 @@ class IllustrationGeneratorAgent {
         // Record per-step cost
         context.recordCost({
           agent: this.name,
-          model: IMAGE_MODEL,
+          model,
           inputTokens: 0,
           outputTokens: 0,
           costUsd: result.costUsd,
@@ -136,11 +142,13 @@ class IllustrationGeneratorAgent {
           imageBuffer: result.imageBuffer,
           mimeType: "image/png",
           filePath,
-          modelUsed: IMAGE_MODEL,
+          modelUsed: model,
           width: 1024,
           height: 1024,
           costUsd: result.costUsd,
           durationMs: stepDuration,
+          complexity,
+          attempt: result.attempt,
         });
 
         // Update accumulated parts for next step's inactive rendering

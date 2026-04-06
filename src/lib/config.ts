@@ -7,6 +7,9 @@ export const config = {
   geminiImageModel:
     process.env.GEMINI_IMAGE_MODEL ??
     "gemini-3.1-flash-image-preview",
+  geminiImageProModel:
+    process.env.GEMINI_IMAGE_PRO_MODEL ??
+    "gemini-3-pro-image-preview",
   qualityThreshold: parseInt(process.env.QUALITY_THRESHOLD ?? "85", 10),
   maxRevisionLoops: parseInt(process.env.MAX_REVISION_LOOPS ?? "2", 10),
   maxFileSizeMb: parseInt(process.env.MAX_FILE_SIZE_MB ?? "50", 10),
@@ -31,5 +34,11 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
   "gemini-3.1-pro-preview": { inputPerMillion: 1.25, outputPerMillion: 5.0 },
 };
 
-/** Flat cost per generated image (USD) */
+/** Flat cost per generated image (USD) — default for unknown models */
 export const IMAGE_COST_USD = 0.04;
+
+/** Per-model image pricing (USD per image) for IL-018 routing */
+export const IMAGE_PRICING: Record<string, number> = {
+  "gemini-3.1-flash-image-preview": 0.04,
+  "gemini-3-pro-image-preview": 0.07,
+};

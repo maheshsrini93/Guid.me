@@ -68,12 +68,16 @@ export function DetailDrawer({ agent, open, onOpenChange }: { agent: AgentState 
             <div className="rounded-none bg-muted p-3 font-mono text-sm text-muted-foreground">{agent.message || "No message"}</div>
           </div>
 
-          {agent.summary && (
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium">Execution Summary</h4>
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium">Execution Summary</h4>
+            {agent.summary ? (
               <div className="rounded-none border p-4 text-sm leading-relaxed">{agent.summary}</div>
-            </div>
-          )}
+            ) : (
+              <div className="rounded-none border border-dashed p-4 text-center text-sm text-muted-foreground">
+                {agent.status === "active" ? "Agent is still running..." : agent.status === "idle" ? "Agent has not started yet." : "No summary available."}
+              </div>
+            )}
+          </div>
 
           {agent.promptSent ? (
             <CollapsibleSection title="Input Prompt">

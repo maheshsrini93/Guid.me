@@ -1,4 +1,4 @@
-import { config, MODEL_PRICING, IMAGE_COST_USD } from "@/lib/config";
+import { config, MODEL_PRICING, IMAGE_COST_USD, IMAGE_PRICING } from "@/lib/config";
 
 // ============================================================
 // Model IDs (from config / environment)
@@ -7,6 +7,7 @@ import { config, MODEL_PRICING, IMAGE_COST_USD } from "@/lib/config";
 export const FLASH_MODEL = config.geminiFlashModel;
 export const PRO_MODEL = config.geminiProModel;
 export const IMAGE_MODEL = config.geminiImageModel;
+export const IMAGE_PRO_MODEL = config.geminiImageProModel;
 
 /**
  * Calculate the cost of a text generation call.
@@ -23,7 +24,10 @@ export function calculateCost(
   return Math.round((inputCost + outputCost) * 1_000_000) / 1_000_000; // round to 6 decimal places
 }
 
-/** Get the approximate cost of an image generation */
-export function getImageCost(): number {
+/** Get the approximate cost of an image generation, per-model if available */
+export function getImageCost(model?: string): number {
+  if (model && IMAGE_PRICING[model] !== undefined) {
+    return IMAGE_PRICING[model];
+  }
   return IMAGE_COST_USD;
 }

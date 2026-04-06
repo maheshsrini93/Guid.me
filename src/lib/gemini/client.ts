@@ -216,7 +216,7 @@ export async function generateTextWithVision(
  */
 export async function generateImage(
   prompt: string,
-  options?: { model?: string },
+  options?: { model?: string; temperature?: number },
 ): Promise<ImageGenerationResult> {
   const model = options?.model ?? config.geminiImageModel;
   const apiKey = config.geminiApiKey;
@@ -233,6 +233,7 @@ export async function generateImage(
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     generationConfig: {
       responseModalities: ["IMAGE"],
+      ...(options?.temperature !== undefined && { temperature: options.temperature }),
     },
   };
 
@@ -260,9 +261,37 @@ export async function generateImage(
   for (const part of parts) {
     if (part.inlineData?.data) {
       const imageBuffer = Buffer.from(part.inlineData.data, "base64");
-      return { imageBuffer, costUsd: getImageCost() };
+      return { imageBuffer, costUsd: getImageCost(model) };
     }
   }
 
   throw new Error("No image data found in response parts");
+}
+
+/**
+ * Generate an image with retry logic per IL-004.
+ * Retries up to maxRetries times with linear backoff on failure.
+ */
+export async function generateImageWithRetry(
+  prompt: string,
+  options?: { model?: string; temperature?: number; maxRetries?: number },
+): Promise<ImageGenerationResult & { attempt: number }> {
+  const maxRetries = options?.maxRetries ?? 3;
+  let lastError: Error | undefined;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await generateImage(prompt, options);
+      return { ...result, attempt };
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      if (attempt < maxRetries) {
+        await new Promise((r) => setTimeout(r, attempt * 1000));
+      }
+    }
+  }
+
+  throw new Error(
+    `Image generation failed after ${maxRetries} attempts: ${lastError?.message}`,
+  );
 }
