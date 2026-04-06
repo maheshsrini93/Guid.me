@@ -24,6 +24,8 @@ export interface AgentState {
   costUsd?: number;
   summary?: string;
   startedAt?: string;
+  promptSent?: string;
+  responseReceived?: string;
 }
 
 export interface PipelineMonitorState {
