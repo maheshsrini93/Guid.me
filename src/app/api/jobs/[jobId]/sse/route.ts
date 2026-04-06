@@ -25,6 +25,8 @@ export async function GET(
       currentAgent: jobs.currentAgent,
       totalCostUsd: jobs.totalCostUsd,
       errorMessage: jobs.errorMessage,
+      qualityScore: jobs.qualityScore,
+      qualityDecision: jobs.qualityDecision,
     })
     .from(jobs)
     .where(eq(jobs.id, jobId))
@@ -111,12 +113,29 @@ export async function GET(
     timestamp: new Date().toISOString(),
   });
 
-  // If job is already terminal, send error info if applicable and close
+  // If job is already terminal, send final state and close
   if (terminalStates.includes(job.status)) {
     if (job.status === "failed" && job.errorMessage) {
       sendEvent("pipeline:error", {
         error: job.errorMessage,
         recoverable: false,
+      });
+    }
+    if (job.status === "completed") {
+      // Calculate total duration from first agent start to last agent end
+      const firstExec = completedExecs[0];
+      const lastExec = completedExecs[completedExecs.length - 1];
+      const durationMs =
+        firstExec && lastExec && firstExec.startedAt && lastExec.startedAt && lastExec.durationMs
+          ? new Date(lastExec.startedAt).getTime() + (lastExec.durationMs ?? 0) - new Date(firstExec.startedAt).getTime()
+          : 0;
+
+      sendEvent("pipeline:complete", {
+        state: "completed",
+        qualityScore: job.qualityScore ?? 0,
+        qualityDecision: job.qualityDecision ?? "approved",
+        totalCostUsd: job.totalCostUsd ?? 0,
+        durationMs,
       });
     }
     setTimeout(() => close(), 100);

@@ -113,6 +113,7 @@ function reducer(state: PipelineMonitorState, action: Action): PipelineMonitorSt
             ...state.agents[action.payload.agent],
             status: "complete",
             progress: 100,
+            message: action.payload.summary || "Completed",
             durationMs: action.payload.durationMs,
             costUsd: action.payload.costUsd,
             summary: action.payload.summary,

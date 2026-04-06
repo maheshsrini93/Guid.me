@@ -31,7 +31,7 @@ export function PipelineProgress({ agents, order }: { agents: Record<AgentName, 
       {/* Active progress line — same origin, width as fraction of dot span */}
       <div
         className="absolute left-2 top-1/2 h-0.5 -translate-y-1/2 bg-primary transition-all duration-500"
-        style={{ width: `calc(${progressPercent} / 100 * (100% - 1rem))` }}
+        style={{ width: `calc((100% - 1rem) * ${progressPercent / 100})` }}
       />
 
       {order.map((agentName) => {
