@@ -109,6 +109,8 @@ export interface RawStepExtraction {
   complexity: "simple" | "complex";
   /** Self-reported confidence (0.0 to 1.0) */
   confidence: number;
+  /** What the user should see/hear/feel when step is done correctly */
+  confirmationCue?: string;
 }
 
 export interface SpatialRelationship {

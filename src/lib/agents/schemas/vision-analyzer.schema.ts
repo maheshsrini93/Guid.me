@@ -277,6 +277,11 @@ export const visionAnalyzerSchema: GenerationConfig["responseSchema"] = {
             description:
               "Self-reported confidence from 0.0 to 1.0. Lower if image is blurry, arrows overlap, parts are obscured, or fastener types are ambiguous. Be honest — do not default to 1.0.",
           },
+          confirmationCue: {
+            type: SchemaType.STRING,
+            description:
+              "What the user should see, hear, or feel when this step is completed correctly (e.g., 'audible click', 'flush surface', 'arrow on cam lock points toward panel edge'). Only populate if a visual cue is present in the image — icons like CLICK, checkmarks, alignment indicators, or tactile feedback symbols.",
+          },
         },
         required: [
           "stepNumber",

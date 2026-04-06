@@ -284,6 +284,7 @@ async function runPerPage<TOutput>(
 
   const systemPrompt = config.buildSystemPrompt();
   const pageResults: unknown[] = [];
+  let previousStepSummary = "";
 
   for (let i = 0; i < pages.length; i++) {
     if (context.isCancelled()) {
@@ -297,6 +298,7 @@ async function runPerPage<TOutput>(
     const userPrompt = config.buildUserPrompt(context.pipelineState, {
       pageNumber: page.pageNumber,
       totalPages: pages.length,
+      previousStepSummary,
     });
 
     // Read the page image
@@ -371,6 +373,7 @@ async function runPerPage<TOutput>(
         });
 
         pageResults.push(pageOutput);
+        previousStepSummary = extractLastStepSummary(pageOutput);
         continue;
       }
     }
@@ -384,8 +387,19 @@ async function runPerPage<TOutput>(
     });
 
     pageResults.push(pageOutput);
+    previousStepSummary = extractLastStepSummary(pageOutput);
   }
 
   // The per-page config's parseOutput handles the array aggregation
   return config.parseOutput(pageResults as unknown as TOutput);
+}
+
+/** Extract a short summary from the last step of a page result for cross-page continuity. */
+function extractLastStepSummary(pageOutput: unknown): string {
+  const page = pageOutput as Record<string, unknown> | null;
+  const steps = (page?.steps as Array<Record<string, unknown>>) ?? [];
+  if (steps.length === 0) return "";
+  const lastStep = steps[steps.length - 1];
+  const desc = (lastStep.rawDescription as string) ?? "";
+  return `Step ${lastStep.stepNumber}: ${desc.slice(0, 200)}`;
 }
