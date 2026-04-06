@@ -161,7 +161,7 @@ export function OutputPageClient({ jobId }: { jobId: string }) {
           <div className="rounded-none border bg-card p-4">
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Structure</p>
             <p className="mt-2 text-3xl font-bold">
-              {data.guide?.phaseCount ?? 0} <span className="text-base font-normal text-muted-foreground">phases</span>
+              {data.guide?.phaseCount ?? 0} <span className="text-base font-normal text-muted-foreground">sections</span>
             </p>
           </div>
           <div className="rounded-none border bg-card p-4">

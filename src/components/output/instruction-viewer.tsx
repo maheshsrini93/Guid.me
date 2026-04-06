@@ -1,9 +1,139 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, Clock, Users, Wrench, Package } from "lucide-react";
+import { AlertTriangle, ChevronDown, Clock, Users, Wrench, Package, ZoomIn, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+
+const SEVERITY_COLORS: Record<string, { border: string; bg: string; text: string; icon: string; badge: string }> = {
+  danger: { border: "border-red-500", bg: "bg-red-500/10", text: "text-red-900 dark:text-red-200", icon: "text-red-500", badge: "bg-red-500/20 text-red-500" },
+  warning: { border: "border-orange-500", bg: "bg-orange-500/10", text: "text-orange-900 dark:text-orange-200", icon: "text-orange-500", badge: "bg-orange-500/20 text-orange-500" },
+  caution: { border: "border-amber-500", bg: "bg-amber-500/10", text: "text-amber-900 dark:text-amber-200", icon: "text-amber-500", badge: "bg-amber-500/20 text-amber-500" },
+};
+
+function getSeverityColors(severity: string) {
+  return SEVERITY_COLORS[severity] ?? SEVERITY_COLORS.caution;
+}
+
+function SafetyWarningsSection({ warnings }: { warnings: any[] }) {
+  const [expanded, setExpanded] = useState(false);
+
+  // Count by severity
+  const counts: Record<string, number> = {};
+  for (const w of warnings) {
+    const sev = w.severity ?? "caution";
+    counts[sev] = (counts[sev] ?? 0) + 1;
+  }
+
+  return (
+    <div className="space-y-3">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center justify-between py-1 text-left"
+      >
+        <h3 className="font-semibold">General Safety Warnings</h3>
+        <div className="flex items-center gap-2">
+          {!expanded &&
+            Object.entries(counts).map(([sev, count]) => {
+              const colors = getSeverityColors(sev);
+              return (
+                <span
+                  key={sev}
+                  className={cn("rounded px-2 py-0.5 text-xs font-semibold uppercase", colors.badge)}
+                >
+                  {count} {sev}
+                </span>
+              );
+            })}
+          <ChevronDown
+            className={cn("h-5 w-5 text-muted-foreground transition-transform", expanded && "rotate-180")}
+          />
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="space-y-3">
+          {warnings.map((warning: any, i: number) => {
+            const colors = getSeverityColors(warning.severity);
+            return (
+              <div key={i} className={cn("flex items-start gap-3 border-l-4 p-4", colors.border, colors.bg, colors.text)}>
+                <AlertTriangle className={cn("mt-0.5 h-5 w-5 shrink-0", colors.icon)} />
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider opacity-80">{warning.severity}</p>
+                  <p className="text-sm font-medium">{warning.text}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CollapsibleSection({ sectionNumber, name, stepCount, children }: { sectionNumber: number; name: string; stepCount: number; children: React.ReactNode }) {
+  const [expanded, setExpanded] = useState(true);
+
+  return (
+    <div className="space-y-6">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center justify-between border-b pb-2 text-left"
+      >
+        <h2 className="text-2xl font-bold tracking-tight">
+          <span className="text-muted-foreground">Section {sectionNumber}:</span> {name}
+        </h2>
+        <div className="flex items-center gap-2">
+          {!expanded && (
+            <span className="rounded bg-muted px-2 py-0.5 text-sm text-muted-foreground">
+              {stepCount} {stepCount === 1 ? "step" : "steps"}
+            </span>
+          )}
+          <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform", expanded && "rotate-180")} />
+        </div>
+      </button>
+      {expanded && children}
+    </div>
+  );
+}
+
+function StepIllustration({ src, alt }: { src: string; alt: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="group/img relative mt-6 block max-w-sm cursor-pointer overflow-hidden rounded-none border bg-muted/30 transition-colors hover:border-primary/50"
+      >
+        <img src={src} alt={alt} className="w-full object-contain" loading="lazy" />
+        <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover/img:bg-black/30">
+          <ZoomIn className="h-6 w-6 text-white opacity-0 transition-opacity group-hover/img:opacity-100" />
+        </div>
+      </button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-4xl overflow-hidden rounded-none border-none bg-black/95 p-0">
+          <VisuallyHidden><DialogTitle>Illustration</DialogTitle></VisuallyHidden>
+          <div className="relative">
+            <button
+              onClick={() => setOpen(false)}
+              className="absolute right-3 top-3 z-20 rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <img src={src} alt={alt} className="w-full object-contain" />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
 
 export function InstructionViewer({ data, jobId }: { data: any; jobId?: string }) {
   const [activeStep, setActiveStep] = useState<number | null>(null);
@@ -16,27 +146,30 @@ export function InstructionViewer({ data, jobId }: { data: any; jobId?: string }
         <div className="rounded-none border bg-card p-4">
           <h3 className="mb-4 font-semibold">Table of Contents</h3>
           <div className="space-y-4">
-            {data.phases.map((phase: any, i: number) => (
-              <div key={i}>
-                <h4 className="mb-2 text-sm font-medium text-muted-foreground">{phase.name}</h4>
-                <ul className="space-y-1 border-l-2 border-muted pl-3">
-                  {phase.steps.map((step: any) => (
-                    <li key={step.number}>
-                      <a
-                        href={`#step-${step.number}`}
-                        className={cn(
-                          "block py-1 text-sm transition-colors hover:text-primary",
-                          activeStep === step.number ? "font-medium text-primary" : "text-muted-foreground"
-                        )}
-                        onClick={() => setActiveStep(step.number)}
-                      >
-                        {step.number}. {step.title}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+            {data.phases.map((section: any, sIdx: number) => {
+              const sectionNum = sIdx + 1;
+              return (
+                <div key={sIdx}>
+                  <h4 className="mb-2 text-sm font-medium text-muted-foreground">{sectionNum}. {section.name}</h4>
+                  <ul className="space-y-1 border-l-2 border-muted pl-3">
+                    {section.steps.map((step: any, stepIdx: number) => (
+                      <li key={step.number}>
+                        <a
+                          href={`#step-${step.number}`}
+                          className={cn(
+                            "block py-1 text-sm transition-colors hover:text-primary",
+                            activeStep === step.number ? "font-medium text-primary" : "text-muted-foreground"
+                          )}
+                          onClick={() => setActiveStep(step.number)}
+                        >
+                          {sectionNum}.{stepIdx + 1} {step.title}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -110,45 +243,26 @@ export function InstructionViewer({ data, jobId }: { data: any; jobId?: string }
           </div>
 
           {data.safetyWarnings.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="font-semibold">General Safety Warnings</h3>
-              {data.safetyWarnings.map((warning: any, i: number) => (
-                <div key={i} className={cn(
-                  "flex items-start gap-3 border-l-4 p-4",
-                  warning.severity === "danger" ? "border-red-500 bg-red-500/10 text-red-900 dark:text-red-200" :
-                  warning.severity === "warning" ? "border-orange-500 bg-orange-500/10 text-orange-900 dark:text-orange-200" :
-                  "border-amber-500 bg-amber-500/10 text-amber-900 dark:text-amber-200"
-                )}>
-                  <AlertTriangle className={cn(
-                    "mt-0.5 h-5 w-5 shrink-0",
-                    warning.severity === "danger" ? "text-red-500" :
-                    warning.severity === "warning" ? "text-orange-500" :
-                    "text-amber-500"
-                  )} />
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider opacity-80">{warning.severity}</p>
-                    <p className="text-sm font-medium">{warning.text}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <SafetyWarningsSection warnings={data.safetyWarnings} />
           )}
         </div>
 
         <div className="space-y-12">
-          {data.phases.map((phase: any, i: number) => (
-            <div key={i} className="space-y-6">
-              <h2 className="border-b pb-2 text-2xl font-bold tracking-tight">{phase.name}</h2>
-
+          {data.phases.map((section: any, sIdx: number) => {
+            const sectionNum = sIdx + 1;
+            return (
+            <CollapsibleSection key={sIdx} sectionNumber={sectionNum} name={section.name} stepCount={section.steps.length}>
               <div className="space-y-6">
-                {phase.steps.map((step: any) => (
+                {section.steps.map((step: any, stepIdx: number) => {
+                  const stepLabel = `${sectionNum}.${stepIdx + 1}`;
+                  return (
                   <div
                     key={step.number}
                     id={`step-${step.number}`}
                     className="group relative rounded-none border bg-card p-6 transition-colors hover:border-primary/50"
                   >
-                    <div className="absolute -left-3 -top-3 flex h-8 w-8 items-center justify-center rounded-none bg-primary text-sm font-bold text-primary-foreground shadow-sm">
-                      {step.number}
+                    <div className="absolute -left-3 -top-3 flex h-8 min-w-8 items-center justify-center rounded-none bg-primary px-2 text-sm font-bold text-primary-foreground shadow-sm">
+                      {stepLabel}
                     </div>
 
                     <div className="ml-2">
@@ -211,21 +325,19 @@ export function InstructionViewer({ data, jobId }: { data: any; jobId?: string }
                       )}
 
                       {jobId && (
-                        <div className="mt-6 overflow-hidden rounded-none border bg-muted/30">
-                          <img
-                            src={`/api/jobs/${jobId}/illustrations/${step.number}`}
-                            alt={`Illustration for Step ${step.number}: ${step.title}`}
-                            className="w-full object-contain"
-                            loading="lazy"
-                          />
-                        </div>
+                        <StepIllustration
+                          src={`/api/jobs/${jobId}/illustrations/${step.number}`}
+                          alt={`Illustration for Step ${step.number}: ${step.title}`}
+                        />
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
-            </div>
-          ))}
+            </CollapsibleSection>
+            );
+          })}
         </div>
       </div>
     </div>
