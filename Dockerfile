@@ -12,6 +12,12 @@ RUN pnpm install --frozen-lockfile
 # Force rebuild better-sqlite3 native addon for this platform
 RUN pnpm rebuild better-sqlite3
 
+# Prepare better-sqlite3 + deps for runner stage (flatten pnpm structure)
+RUN mkdir -p /tmp/native-deps && \
+    cp -rL node_modules/better-sqlite3 /tmp/native-deps/better-sqlite3 && \
+    cp -rL node_modules/.pnpm/bindings@*/node_modules/bindings /tmp/native-deps/bindings && \
+    cp -rL node_modules/.pnpm/file-uri-to-path@*/node_modules/file-uri-to-path /tmp/native-deps/file-uri-to-path
+
 # Copy source and build
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -32,6 +38,11 @@ ENV HOSTNAME="0.0.0.0"
 # Copy standalone output
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+
+# Copy better-sqlite3 native bindings (excluded from standalone by serverExternalPackages)
+COPY --from=builder /tmp/native-deps/better-sqlite3 ./node_modules/better-sqlite3
+COPY --from=builder /tmp/native-deps/bindings ./node_modules/bindings
+COPY --from=builder /tmp/native-deps/file-uri-to-path ./node_modules/file-uri-to-path
 
 # Create storage directory (will be overlaid by volume mount)
 RUN mkdir -p /app/storage
