@@ -470,11 +470,12 @@ export const DEMO_ENFORCED_GUIDE: EnforcedGuide = {
     },
   ],
   guideMetadata: {
+    title: "Assemble the BJÖRKUDDEN Bookshelf",
     safetyLevel: "medium",
     estimatedMinutes: 25,
     personsRequired: 2,
     skillLevel: "basic_hand_tools",
-    purposeStatement: "Assemble the BJÖRKUDDEN bookshelf",
+    purposeStatement: "This guide walks you through assembling the BJÖRKUDDEN bookshelf from start to finish.",
   },
 };
 

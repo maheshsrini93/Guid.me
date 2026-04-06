@@ -334,6 +334,8 @@ export interface SafetyCallout {
 }
 
 export interface GuideMetadata {
+  /** WI-002 compliant title: [Verb] [Product Name], title case, ≤60 chars */
+  title: string;
   /** Overall safety classification */
   safetyLevel: "low" | "medium" | "high";
   /** Estimated completion time in minutes */

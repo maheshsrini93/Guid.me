@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Image as ImageIcon, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
@@ -24,10 +24,12 @@ export function IllustrationGallery({ jobId, steps }: { jobId: string; steps: an
             onClick={() => setSelectedImage(ill)}
           >
             <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden bg-muted">
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground opacity-50 transition-opacity group-hover:opacity-100">
-                <ImageIcon className="mb-2 h-8 w-8" />
-                <span className="text-xs font-medium">Illustration {ill.stepNumber}</span>
-              </div>
+              <img
+                src={ill.url}
+                alt={`Step ${ill.stepNumber}: ${ill.title}`}
+                className="h-full w-full object-contain"
+                loading="lazy"
+              />
             </div>
             <div className="p-4">
               <div className="flex items-center gap-2">
@@ -52,10 +54,11 @@ export function IllustrationGallery({ jobId, steps }: { jobId: string; steps: an
                 </button>
               </div>
               <div className="flex flex-1 items-center justify-center p-8">
-                <div className="flex flex-col items-center text-white/50">
-                  <ImageIcon className="mb-4 h-16 w-16" />
-                  <p>Image placeholder for Step {selectedImage.stepNumber}</p>
-                </div>
+                <img
+                  src={selectedImage.url}
+                  alt={`Step ${selectedImage.stepNumber}: ${selectedImage.title}`}
+                  className="max-h-full max-w-full object-contain"
+                />
               </div>
               <div className="bg-black/80 p-4 text-white">
                 <p className="font-medium">Step {selectedImage.stepNumber}: {selectedImage.title}</p>

@@ -5,7 +5,7 @@ import { AlertTriangle, Clock, Users, Wrench, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-export function InstructionViewer({ data }: { data: any }) {
+export function InstructionViewer({ data, jobId }: { data: any; jobId?: string }) {
   const [activeStep, setActiveStep] = useState<number | null>(null);
 
   if (!data) return null;
@@ -207,6 +207,17 @@ export function InstructionViewer({ data }: { data: any }) {
                               </div>
                             </div>
                           )}
+                        </div>
+                      )}
+
+                      {jobId && (
+                        <div className="mt-6 overflow-hidden rounded-none border bg-muted/30">
+                          <img
+                            src={`/api/jobs/${jobId}/illustrations/${step.number}`}
+                            alt={`Illustration for Step ${step.number}: ${step.title}`}
+                            className="w-full object-contain"
+                            loading="lazy"
+                          />
                         </div>
                       )}
                     </div>

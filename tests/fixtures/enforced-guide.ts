@@ -61,6 +61,7 @@ export function makeValidStep2(overrides: Partial<EnforcedStep> = {}): EnforcedS
 
 export function makeValidMetadata(overrides: Partial<GuideMetadata> = {}): GuideMetadata {
   return {
+    title: "Assemble the KALLAX Shelf Unit",
     safetyLevel: "low",
     estimatedMinutes: 30,
     personsRequired: 1,

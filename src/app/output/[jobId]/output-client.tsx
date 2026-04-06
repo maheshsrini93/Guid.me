@@ -36,8 +36,17 @@ export function OutputPageClient({ jobId }: { jobId: string }) {
         const startedAt = json.job?.createdAt ? new Date(json.job.createdAt).getTime() : 0;
         const completedAt = json.job?.completedAt ? new Date(json.job.completedAt).getTime() : 0;
 
+        // Derive a readable title from the filename (strip extension, replace separators)
+        const displayTitle = (json.job?.filename ?? "")
+          .replace(/\.[^.]+$/, "")          // remove extension
+          .replace(/__.*$/, "")             // remove IKEA article suffix
+          .replace(/[-_]+/g, " ")           // separators → spaces
+          .replace(/\b\w/g, (c: string) => c.toUpperCase()) // title case
+          .trim();
+
         const transformed = {
           ...json,
+          displayTitle: displayTitle || json.guide?.title || "Untitled",
           xml: json.guide?.xmlContent ?? "",
           quality: {
             score: json.guide?.qualityScore ?? 0,
@@ -72,7 +81,7 @@ export function OutputPageClient({ jobId }: { jobId: string }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${(data.guide?.title ?? "output").replace(/\s+/g, "_").toLowerCase()}_${new Date().toISOString().split("T")[0]}.xml`;
+    a.download = `${(data.displayTitle ?? "output").replace(/\s+/g, "_").toLowerCase()}_${new Date().toISOString().split("T")[0]}.xml`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -122,7 +131,7 @@ export function OutputPageClient({ jobId }: { jobId: string }) {
               <span>/</span>
               <span className="font-mono">{jobId}</span>
             </div>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight">{data.guide?.title ?? "Untitled"}</h1>
+            <h1 className="mt-1 text-3xl font-bold tracking-tight">{data.displayTitle}</h1>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="outline" asChild>
@@ -197,7 +206,7 @@ export function OutputPageClient({ jobId }: { jobId: string }) {
           </TabsList>
 
           <TabsContent value="instruction" className="mt-0 outline-none">
-            <InstructionViewer data={data.guide?.jsonContent} />
+            <InstructionViewer data={data.guide?.jsonContent} jobId={jobId} />
           </TabsContent>
           <TabsContent value="xml" className="mt-0 outline-none">
             <XmlViewer xml={data.xml} />
