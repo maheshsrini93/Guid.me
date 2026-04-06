@@ -36,20 +36,20 @@ export function StepCard({
     <div
       id={`step-${step.number}`}
       data-step-number={step.number}
-      className="group rounded-lg border bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition-shadow p-4"
+      className="group rounded-lg border bg-white dark:bg-slate-900 shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800 transition-all p-5"
     >
       <div className="flex items-start gap-3">
         {/* Step number badge */}
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-sm font-semibold">
+        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-base font-semibold">
           {step.number}
         </div>
 
-        <div className="flex-1 min-w-0 space-y-2">
+        <div className="flex-1 min-w-0 space-y-3">
           {/* Title */}
-          <h4 className="font-medium text-foreground leading-snug">{step.title}</h4>
+          <h4 className="font-semibold text-foreground leading-snug">{step.title}</h4>
 
           {/* Instruction */}
-          <p className="text-sm text-muted-foreground leading-relaxed">{step.instruction}</p>
+          <p className="text-[15px] text-muted-foreground leading-relaxed">{step.instruction}</p>
 
           {/* Parts badges */}
           {mergedParts.length > 0 && (
@@ -60,7 +60,7 @@ export function StepCard({
                 return (
                   <span
                     key={partKey}
-                    className="inline-flex items-center gap-1 text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded"
+                    className="inline-flex items-center gap-1 text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700"
                   >
                     {part?.name ?? partRef.id}
                     {partRef.quantity > 1 && <span className="font-mono">&times;{partRef.quantity}</span>}

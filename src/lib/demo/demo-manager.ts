@@ -23,6 +23,7 @@ import {
   DEMO_TOTAL_COST,
 } from "./demo-data";
 import { getAgentTiming, sleep } from "./demo-timing";
+import type { XmlWorkInstruction, XmlPhase, XmlStep, XmlPart, XmlTool, XmlWarning } from "@/types/xml";
 
 /** Track cancellation per demo job */
 const demoCancelledJobs = new Map<string, { current: boolean }>();
@@ -188,12 +189,13 @@ export async function runDemoPipeline(jobId: string): Promise<void> {
 
     // ── Persist demo guide to DB ───────────────────────────
     const guideId = generateId();
+    const demoJsonContent = buildDemoXmlWorkInstruction(jobId);
     db.insert(generatedGuides)
       .values({
         id: guideId,
         jobId,
         xmlContent: DEMO_XML_CONTENT,
-        jsonContent: JSON.stringify(DEMO_ENFORCED_GUIDE),
+        jsonContent: JSON.stringify(demoJsonContent),
         xmlFilePath: null,
         qualityScore: DEMO_QUALITY_REVIEW.overallScore,
         qualityDecision: DEMO_QUALITY_REVIEW.decision,
@@ -306,6 +308,103 @@ export async function runDemoPipeline(jobId: string): Promise<void> {
 // ============================================================
 // Helpers
 // ============================================================
+
+/**
+ * Build a proper XmlWorkInstruction from the demo EnforcedGuide.
+ * This mirrors what the real XML Assembler does in xml-assembler.ts.
+ */
+function buildDemoXmlWorkInstruction(jobId: string): XmlWorkInstruction {
+  const guide = DEMO_ENFORCED_GUIDE;
+
+  // Collect unique parts across all steps
+  const partsMap = new Map<string, XmlPart>();
+  for (const step of guide.steps) {
+    for (const part of step.parts) {
+      const existing = partsMap.get(part.id);
+      if (existing) {
+        existing.quantity = Math.max(existing.quantity, part.quantity);
+      } else {
+        partsMap.set(part.id, { id: part.id, name: part.name, quantity: part.quantity });
+      }
+    }
+  }
+
+  // Collect guide-level safety warnings
+  const warnings: XmlWarning[] = [];
+  const warningSet = new Set<string>();
+  for (const step of guide.steps) {
+    if (step.safetyCallout) {
+      const key = `${step.safetyCallout.severity}:${step.safetyCallout.text}`;
+      if (!warningSet.has(key)) {
+        warningSet.add(key);
+        warnings.push({ severity: step.safetyCallout.severity, text: step.safetyCallout.text });
+      }
+    }
+  }
+
+  // Group steps into phases
+  const phases: XmlPhase[] = [];
+  let currentPhase: XmlPhase = { name: "Assembly", steps: [] };
+  for (const step of guide.steps) {
+    if (step.phaseStart) {
+      if (currentPhase.steps.length > 0) phases.push(currentPhase);
+      currentPhase = { name: step.phaseStart, steps: [] };
+    }
+    const xmlStep: XmlStep = {
+      number: step.stepNumber,
+      title: step.title,
+      instruction: step.instruction,
+      parts: step.parts.map((p) => ({ id: p.id, quantity: p.quantity })),
+      tools: [],
+      safety: step.safetyCallout
+        ? [{ severity: step.safetyCallout.severity, text: step.safetyCallout.text }]
+        : [],
+      illustrationSrc: `step-${String(step.stepNumber).padStart(3, "0")}.png`,
+      twoPersonRequired: step.twoPersonRequired,
+      complexity: step.complexity,
+      confidence: step.confidence,
+      sourcePages: step.sourcePdfPages,
+    };
+    currentPhase.steps.push(xmlStep);
+  }
+  if (currentPhase.steps.length > 0) phases.push(currentPhase);
+
+  return {
+    metadata: {
+      title: guide.guideMetadata.purposeStatement,
+      domain: "consumer",
+      safetyLevel: DEMO_SAFETY_REVIEW.recommendedSafetyLevel,
+      estimatedMinutes: guide.guideMetadata.estimatedMinutes,
+      personsRequired: guide.guideMetadata.personsRequired,
+      skillLevel: guide.guideMetadata.skillLevel,
+      purpose: guide.guideMetadata.purposeStatement,
+      sourceDocument: {
+        filename: "demo-bookshelf.pdf",
+        format: "pdf",
+        pageCount: DEMO_EXTRACTED_DOCUMENT.pageCount,
+      },
+    },
+    partsList: [...partsMap.values()],
+    toolsRequired: [],
+    safetyWarnings: warnings,
+    phases,
+    generationMetadata: {
+      jobId,
+      generatedAt: new Date().toISOString(),
+      qualityScore: DEMO_QUALITY_REVIEW.overallScore,
+      qualityDecision: DEMO_QUALITY_REVIEW.decision,
+      totalCostUsd: DEMO_TOTAL_COST,
+      processingTimeMs: 35000,
+      textRevisionLoops: 0,
+      modelsUsed: ["gemini-3.1-flash-lite-preview", "gemini-3.1-pro-preview"],
+      qualityFlags: DEMO_QUALITY_REVIEW.issues.map((i) => ({
+        severity: i.severity,
+        step: i.stepNumber,
+        description: i.description,
+      })),
+    },
+  };
+}
 
 function checkCancelled(jobId: string, ref: { current: boolean }): void {
   if (ref.current) throw new PipelineCancelledError(jobId);

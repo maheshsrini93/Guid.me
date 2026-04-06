@@ -17,6 +17,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { useParams } from "next/navigation";
+import { cn } from "@/lib/utils";
 import { IllustrationGallery } from "@/components/output/illustration-gallery";
 import { InstructionViewer } from "@/components/output/instruction-viewer";
 import type { XmlWorkInstruction } from "@/types/xml";
@@ -403,12 +404,12 @@ function SummaryCard({
   sub: string;
 }) {
   return (
-    <div className="bg-white dark:bg-slate-900 border rounded-lg p-4 shadow-sm">
+    <div className="bg-slate-50/80 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center gap-2">
         {icon}
         <span className="text-xs text-muted-foreground">{label}</span>
       </div>
-      <p className="text-lg font-semibold mt-2 font-mono">{value}</p>
+      <p className="text-xl font-semibold mt-2 font-mono">{value}</p>
       <p className="text-xs text-muted-foreground capitalize">{sub}</p>
     </div>
   );
@@ -439,10 +440,10 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 pb-3 text-sm font-medium border-b-2 transition-colors ${
+      className={`flex items-center gap-2 pt-1 pb-3 px-3 text-sm font-medium transition-colors ${
         active
-          ? "border-indigo-600 text-indigo-600"
-          : "border-transparent text-muted-foreground hover:text-foreground"
+          ? "border-b-[3px] border-indigo-600 text-indigo-600"
+          : "border-b-2 border-transparent text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 rounded-t-md"
       }`}
     >
       {icon}
@@ -459,7 +460,7 @@ function XmlViewer({ xml }: { xml: string }) {
   const [expanded, setExpanded] = useState(true);
 
   return (
-    <div className="rounded-lg border bg-white dark:bg-slate-900 shadow-sm">
+    <div className="rounded-lg border bg-slate-50 dark:bg-slate-900 shadow-sm">
       <div className="flex items-center justify-between px-4 py-3 border-b">
         <span className="text-sm font-medium">work-instruction.xml</span>
         <button
@@ -470,7 +471,7 @@ function XmlViewer({ xml }: { xml: string }) {
         </button>
       </div>
       {expanded && (
-        <pre className="p-4 overflow-auto max-h-[600px] font-mono text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">
+        <pre className="p-4 overflow-auto max-h-[600px] font-mono text-[13px] leading-relaxed text-slate-800 dark:text-slate-200 border-l-4 border-l-indigo-200 dark:border-l-indigo-800">
           {highlightXml(xml)}
         </pre>
       )}
@@ -483,7 +484,7 @@ function highlightXml(xml: string): React.ReactNode {
   const lines = xml.split("\n");
   return lines.map((line, i) => (
     <div key={i} className="flex">
-      <span className="select-none text-slate-400 dark:text-slate-600 w-10 text-right mr-4 flex-shrink-0">
+      <span className="select-none text-slate-500 dark:text-slate-600 w-10 text-right mr-4 flex-shrink-0">
         {i + 1}
       </span>
       <span
@@ -540,10 +541,13 @@ function QualityReport({
     <div className="space-y-6">
       {/* Score overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-slate-900 border rounded-lg p-6 shadow-sm text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full border-4 border-current mb-3"
-            style={{ color: qualityScore >= 85 ? "#10B981" : qualityScore >= 70 ? "#F59E0B" : "#F43F5E" }}
-          >
+        <div className="bg-slate-50/80 dark:bg-slate-900 border rounded-lg p-6 shadow-sm text-center">
+          <div className={cn(
+            "inline-flex items-center justify-center w-20 h-20 rounded-full border-4 mb-3",
+            qualityScore >= 85 ? "border-emerald-500 text-emerald-600" :
+            qualityScore >= 70 ? "border-amber-500 text-amber-600" :
+            "border-rose-500 text-rose-600"
+          )}>
             <span className="text-2xl font-bold font-mono">{qualityScore}</span>
           </div>
           <p className="text-sm font-medium">Overall Score</p>
@@ -552,7 +556,7 @@ function QualityReport({
           </p>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border rounded-lg p-6 shadow-sm">
+        <div className="bg-slate-50/80 dark:bg-slate-900 border rounded-lg p-6 shadow-sm">
           <p className="text-sm font-medium mb-3">Issue Summary</p>
           <div className="space-y-2">
             <IssueBadge severity="error" count={errorCount} />
@@ -561,7 +565,7 @@ function QualityReport({
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border rounded-lg p-6 shadow-sm">
+        <div className="bg-slate-50/80 dark:bg-slate-900 border rounded-lg p-6 shadow-sm">
           <p className="text-sm font-medium mb-3">Review Details</p>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
@@ -582,13 +586,18 @@ function QualityReport({
 
       {/* Quality issues list */}
       {qualityIssues.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 border rounded-lg shadow-sm">
+        <div className="bg-slate-50/80 dark:bg-slate-900 border rounded-lg shadow-sm">
           <div className="px-4 py-3 border-b">
             <span className="text-sm font-medium">Quality Issues ({qualityIssues.length})</span>
           </div>
           <div className="divide-y">
             {qualityIssues.map((issue, i) => (
-              <div key={i} className="px-4 py-3 flex items-start gap-3">
+              <div key={i} className={cn(
+                "px-4 py-3 flex items-start gap-3 border-l-4",
+                issue.severity === "error" ? "border-l-rose-400" :
+                issue.severity === "warning" ? "border-l-amber-400" :
+                "border-l-slate-300 dark:border-l-slate-600"
+              )}>
                 <SeverityIcon severity={issue.severity} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -616,7 +625,7 @@ function QualityReport({
 
       {/* Safety issues list */}
       {safetyIssues.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 border rounded-lg shadow-sm">
+        <div className="bg-slate-50/80 dark:bg-slate-900 border rounded-lg shadow-sm">
           <div className="px-4 py-3 border-b">
             <span className="text-sm font-medium">Safety Issues ({safetyIssues.length})</span>
           </div>
@@ -711,7 +720,7 @@ function CostBreakdown({
 }) {
   return (
     <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-900 border rounded-lg shadow-sm overflow-hidden">
+      <div className="bg-slate-50/80 dark:bg-slate-900 border rounded-lg shadow-sm overflow-hidden">
         <div className="px-4 py-3 border-b flex items-center justify-between">
           <span className="text-sm font-medium">Per-Agent Cost</span>
           <span className="font-mono text-sm font-semibold text-indigo-600">
@@ -740,18 +749,18 @@ function CostBreakdown({
           </thead>
           <tbody className="divide-y">
             {entries.map((entry, i) => (
-              <tr key={i}>
-                <td className="px-4 py-2 font-medium">{formatAgentName(entry.agent)}</td>
-                <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
+              <tr key={i} className="even:bg-slate-50 dark:even:bg-slate-800/30">
+                <td className="px-4 py-2.5 font-semibold">{formatAgentName(entry.agent)}</td>
+                <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
                   {entry.model ?? "code"}
                 </td>
-                <td className="px-4 py-2 text-right font-mono text-xs">
+                <td className="px-4 py-2.5 text-right font-mono text-xs">
                   {((entry.inputTokens ?? 0) + (entry.outputTokens ?? 0)).toLocaleString()}
                 </td>
-                <td className="px-4 py-2 text-right font-mono text-xs">
+                <td className="px-4 py-2.5 text-right font-mono text-xs">
                   {entry.durationMs ? `${(entry.durationMs / 1000).toFixed(1)}s` : "-"}
                 </td>
-                <td className="px-4 py-2 text-right font-mono text-xs">
+                <td className="px-4 py-2.5 text-right font-mono text-xs text-indigo-600 dark:text-indigo-400">
                   ${(entry.costUsd ?? 0).toFixed(4)}
                 </td>
               </tr>
@@ -760,7 +769,7 @@ function CostBreakdown({
         </table>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 border rounded-lg p-4 shadow-sm">
+      <div className="bg-slate-50/80 dark:bg-slate-900 border rounded-lg p-4 shadow-sm">
         <p className="text-sm font-medium mb-2">Models Used</p>
         <div className="flex flex-wrap gap-2">
           {modelsUsed.map((model, idx) => (

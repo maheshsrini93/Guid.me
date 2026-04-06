@@ -196,7 +196,7 @@ export default function UploadPage() {
               ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/20"
               : file
                 ? "border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-900/10"
-                : "border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600",
+                : "border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-900",
           )}
         >
           <input
@@ -354,7 +354,7 @@ export default function UploadPage() {
                       ? `/output/${job.id}`
                       : `/pipeline/${job.id}`
                   }
-                  className="flex items-center gap-3 rounded-lg border p-3 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
+                  className="flex items-center gap-3 rounded-lg border p-3 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20 transition-colors"
                 >
                   <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
                   <div className="flex-1 min-w-0">

@@ -20,7 +20,7 @@ export function ProcedureHeader({ data }: ProcedureHeaderProps) {
     <div id="procedure-header" className="space-y-5">
       {/* Title + Purpose */}
       <div>
-        <h1 className="text-2xl font-semibold text-foreground leading-tight">
+        <h1 className="text-3xl font-semibold text-foreground leading-tight">
           {metadata.title}
         </h1>
         {metadata.purpose && (
@@ -59,7 +59,7 @@ export function ProcedureHeader({ data }: ProcedureHeaderProps) {
 
       {/* Safety warnings */}
       {safetyWarnings.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-2 border-l-4 border-l-amber-400 pl-3">
           {safetyWarnings.map((w, i) => (
             <SafetyCallout key={i} severity={w.severity} text={w.text} />
           ))}
@@ -86,10 +86,10 @@ export function ProcedureHeader({ data }: ProcedureHeaderProps) {
               </thead>
               <tbody className="divide-y">
                 {partsList.map((p, idx) => (
-                  <tr key={`${p.id}-${idx}`}>
-                    <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground">{p.id}</td>
-                    <td className="px-3 py-1.5">{p.name}</td>
-                    <td className="px-3 py-1.5 text-right font-mono">{p.quantity}</td>
+                  <tr key={`${p.id}-${idx}`} className="even:bg-slate-50 dark:even:bg-slate-800/30">
+                    <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{p.id}</td>
+                    <td className="px-3 py-2">{p.name}</td>
+                    <td className="px-3 py-2 text-right font-mono">{p.quantity}</td>
                   </tr>
                 ))}
               </tbody>
@@ -133,7 +133,7 @@ export function ProcedureHeader({ data }: ProcedureHeaderProps) {
 
 function Badge({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-full capitalize">
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-full capitalize border border-slate-200 dark:border-slate-700">
       {icon}
       {label}
     </span>

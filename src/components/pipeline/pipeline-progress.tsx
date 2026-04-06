@@ -30,7 +30,7 @@ export function PipelineProgress({ agents }: PipelineProgressProps) {
                 className={cn(
                   "w-3 h-3 rounded-full border-2 transition-all duration-200",
                   status === "idle" &&
-                    "border-slate-300 dark:border-slate-600 bg-transparent",
+                    "border-slate-300 dark:border-slate-600 bg-slate-200 dark:bg-slate-700",
                   status === "active" &&
                     "border-indigo-500 bg-indigo-500",
                   status === "complete" &&
@@ -46,7 +46,7 @@ export function PipelineProgress({ agents }: PipelineProgressProps) {
 
             {/* Connector line */}
             {!isLast && (
-              <div className="flex-1 h-0.5 mx-1">
+              <div className="flex-1 h-1 mx-1">
                 <div
                   className={cn(
                     "h-full rounded-full transition-all duration-300",

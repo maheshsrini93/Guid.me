@@ -10,7 +10,12 @@
     "lint": "next lint",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "test": "vitest run --config tests/vitest.config.ts",
+    "test:unit": "vitest run --config tests/vitest.config.ts tests/unit/",
+    "test:api": "vitest run --config tests/vitest.config.ts tests/api/",
+    "test:e2e": "bash tests/e2e/run-all.sh",
+    "test:watch": "vitest --config tests/vitest.config.ts"
   },
   "keywords": [],
   "author": "",
@@ -40,8 +45,11 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.3.3",
+    "@vitest/coverage-v8": "^4.1.2",
+    "agent-browser": "github:vercel-labs/agent-browser",
     "drizzle-kit": "^0.31.9",
     "eslint": "^10.0.2",
-    "eslint-config-next": "^16.1.6"
+    "eslint-config-next": "^16.1.6",
+    "vitest": "^4.1.2"
   }
 }

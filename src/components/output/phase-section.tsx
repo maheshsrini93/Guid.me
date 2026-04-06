@@ -21,15 +21,15 @@ export function PhaseSection({
   showInlineIllustrations,
 }: PhaseSectionProps) {
   return (
-    <section id={`phase-${phaseIndex}`} className="space-y-4">
+    <section id={`phase-${phaseIndex}`} className="space-y-4 pt-6 first:pt-0 border-t border-slate-200 dark:border-slate-800 first:border-t-0">
       <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-        <span className="text-xs font-medium text-muted-foreground bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+        <span className="text-sm font-medium text-muted-foreground bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded">
           Phase {phaseIndex + 1}
         </span>
         {phase.name}
       </h3>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {phase.steps.map((step, stepIndex) => (
           <StepCard
             key={`phase-${phaseIndex}-step-${step.number}-${stepIndex}`}

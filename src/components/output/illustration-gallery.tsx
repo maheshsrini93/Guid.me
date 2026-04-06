@@ -115,7 +115,7 @@ function IllustrationCard({
   return (
     <button
       onClick={onSelect}
-      className="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+      className="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all"
     >
       <div className="aspect-square relative bg-slate-50 dark:bg-slate-800">
         {/* Shimmer placeholder */}
@@ -138,7 +138,7 @@ function IllustrationCard({
           <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-80 transition-opacity drop-shadow-lg" />
         </div>
       </div>
-      <div className="p-3 text-left">
+      <div className="p-3.5 text-left bg-slate-50/50 dark:bg-slate-800/50">
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-fuchsia-100 dark:bg-fuchsia-900/50 text-fuchsia-600 dark:text-fuchsia-400 text-xs font-medium">
             {il.stepNumber}

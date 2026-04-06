@@ -132,13 +132,13 @@ export function AgentCard({ agent, onClick }: AgentCardProps) {
       onClick={onClick}
       className={cn(
         "w-full text-left rounded-lg border bg-card p-4 transition-all duration-200",
-        "hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+        "hover:shadow-md hover:bg-slate-50 dark:hover:bg-slate-800/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
         agent.status === "idle" &&
-          "border-dashed border-slate-300 dark:border-slate-700 opacity-60",
+          "border-solid border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50",
         agent.status === "active" &&
           `border-l-4 ${visuals.borderColor} border-slate-200 dark:border-slate-800 shadow-sm`,
         agent.status === "complete" &&
-          "border-emerald-200 dark:border-emerald-800 border-l-4 border-l-emerald-500",
+          "border-emerald-200 dark:border-emerald-800 border-l-4 border-l-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20",
         agent.status === "error" &&
           "border-l-4 border-l-rose-500 border-slate-200 dark:border-slate-800",
       )}
@@ -148,7 +148,7 @@ export function AgentCard({ agent, onClick }: AgentCardProps) {
         {/* Status indicator */}
         <div
           className={cn(
-            "flex items-center justify-center w-8 h-8 rounded-md",
+            "flex items-center justify-center w-9 h-9 rounded-md",
             agent.status === "idle" && "bg-slate-100 dark:bg-slate-800",
             agent.status === "active" && visuals.bgColor,
             agent.status === "complete" &&
