@@ -2,10 +2,11 @@ import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { mkdirSync } from "fs";
 import path from "path";
+import { config } from "../config";
 import * as schema from "./schema";
 
 // Ensure storage directory exists before opening DB
-const dbPath = path.resolve("./storage/guid.db");
+const dbPath = path.resolve(config.storagePath, "guid.db");
 mkdirSync(path.dirname(dbPath), { recursive: true });
 
 const sqlite = new Database(dbPath);
