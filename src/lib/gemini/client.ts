@@ -7,6 +7,40 @@ import {
 import { config } from "@/lib/config";
 import { calculateCost, getImageCost } from "./models";
 
+/**
+ * Attempt to repair common Gemini JSON output issues before parsing.
+ * Handles trailing commas, single-quoted strings, and unquoted keys.
+ */
+function safeJsonParse<T>(text: string): T {
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    // Repair common issues and retry
+    let repaired = text
+      // Remove trailing commas before } or ]
+      .replace(/,\s*([}\]])/g, "$1")
+      // Fix single-quoted strings → double-quoted (only outside existing double quotes)
+      .replace(/'/g, '"')
+      // Strip markdown code fences if present
+      .replace(/^```(?:json)?\s*\n?/m, "")
+      .replace(/\n?```\s*$/m, "");
+
+    try {
+      return JSON.parse(repaired) as T;
+    } catch {
+      // Try extracting JSON object/array from surrounding text
+      const match = repaired.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+      if (match) {
+        return JSON.parse(match[1]) as T;
+      }
+      // Give up — throw with the original text for debugging
+      throw new SyntaxError(
+        `Failed to parse JSON after repair. First 500 chars: ${text.slice(0, 500)}`
+      );
+    }
+  }
+}
+
 // ============================================================
 // Singleton client
 // ============================================================
@@ -145,7 +179,7 @@ export async function generateTextWithSchema<T>(
   }
 
   const text = result.response.text();
-  const parsed = JSON.parse(text) as T;
+  const parsed = safeJsonParse<T>(text);
   const { inputTokens, outputTokens } = extractTokenCounts(result);
   const costUsd = calculateCost(model, inputTokens, outputTokens);
 
@@ -203,7 +237,7 @@ export async function generateTextWithVision(
   const costUsd = calculateCost(model, inputTokens, outputTokens);
 
   if (responseSchema) {
-    return { parsed: JSON.parse(text), inputTokens, outputTokens, costUsd };
+    return { parsed: safeJsonParse(text), inputTokens, outputTokens, costUsd };
   }
 
   return { text, inputTokens, outputTokens, costUsd };
