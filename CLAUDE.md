@@ -19,19 +19,22 @@ pnpm db:generate      # Generate Drizzle migrations
 
 **Stack:** Next.js 15, TypeScript, Tailwind v4, shadcn/ui, Drizzle ORM (SQLite), Google Gemini API
 
-**8-Agent Pipeline:**
+**8-Agent Pipeline (input-agnostic):**
 
 ```
-[PDF/DOCX] → [1] Document Extractor (code)
-           → [2] Vision Analyzer (Flash→Pro)
-           → [3] Instruction Composer (Flash)
+[PDF | DOCX | STEP (+optional explode video)]
+           → [1] Source Adapter (code — polymorphic over input type)
+           → [2] Vision Analyzer (Flash→Pro; trimmed prompt for CAD)
+           → [3] Instruction Composer (Flash; grounds parts from CAD when present)
            → [4] Guideline Enforcer (Flash + full YAML)
            → [5] Quality Reviewer (Pro)    ─┐ parallel
            → [6] Safety Reviewer (Pro)     ─┘
-           → [7] Illustration Generator (Flash Image)
+           → [7] Illustration Renderer (Flash Image for non-CAD; CAD render + overlays for CAD)
            → [8] XML Assembler (code)
            → [Structured XML + Illustrations]
 ```
+
+**Polymorphism contract (Phase 6):** Agents 1, 2, and 7 dispatch on the presence of `state.extractedSource.structuredMetadata` (CAD-aware sources only) — not on input MIME type or domain. Adding a new input type means dropping a sub-implementation under `src/lib/agents/source-adapter/`; agents 2-8 do not change. See [ADR-0001](docs/adr/0001-source-adapter-pattern.md), [ADR-0002](docs/adr/0002-polymorphic-illustration-agent.md), and [CONTEXT.md](CONTEXT.md) for the glossary.
 
 **Pipeline flow:** pending → extracting → analyzing → composing → enforcing → reviewing → [revising, max 2x] → illustrating → assembling → completed
 
@@ -127,17 +130,17 @@ pnpm db:generate      # Generate Drizzle migrations
 
 ## Agent Models
 
-| Agent | Model | Cost |
-|-------|-------|------|
-| [1] Document Extractor | Pure code (pdftoppm/mammoth) | $0.00 |
-| [2] Vision Analyzer | Flash (default), Pro (escalation) | ~$0.06 |
-| [3] Instruction Composer | Flash | ~$0.02 |
-| [4] Guideline Enforcer | Flash | ~$0.03 |
-| [5] Quality Reviewer | Pro | ~$0.08 |
-| [6] Safety Reviewer | Pro | ~$0.04 |
-| [7] Illustration Generator | Flash Image | ~$0.70 |
-| [8] XML Assembler | Pure code | $0.00 |
-| **Total (24-page PDF)** | | **~$0.93** |
+| Agent | PDF/DOCX path | CAD (STEP) path |
+|-------|---|---|
+| [1] Source Adapter | pdftoppm / mammoth ($0.00) | occt-import-js + ffmpeg + three.js ($0.00); + Pro ~$0.05 if STEP-only fallback |
+| [2] Vision Analyzer | Flash → Pro (~$0.06) | Flash, trimmed CAD prompt (~$0.04) |
+| [3] Instruction Composer | Flash (~$0.02) | Flash (~$0.02) |
+| [4] Guideline Enforcer | Flash (~$0.03) | Flash (~$0.03) |
+| [5] Quality Reviewer | Pro (~$0.08) | Pro (~$0.08) |
+| [6] Safety Reviewer | Pro (~$0.04) | Pro (~$0.04) |
+| [7] Illustration Renderer | Flash Image (~$0.70) | three.js + overlays ($0.00) |
+| [8] XML Assembler | Pure code ($0.00) | Pure code ($0.00) |
+| **Total** | **~$0.93** (24-page PDF) | **~$0.21** (with explode video) / **~$0.26** (STEP-only fallback) |
 
 ## Environment Variables
 
@@ -179,3 +182,17 @@ Set `DEMO_MODE=true` to use pre-cached results. The pipeline monitor animates id
 | `docs/changelog.md` | Chronological record of all project changes |
 
 **Task dependencies:** Every task in `tasks.md` has explicit `(depends: ...)` declarations enabling parallel agent-team execution. Check the critical path and parallelism table at the bottom of the file.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues on `maheshsrini93/Guid.me`, accessed via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Five canonical roles using their default label strings (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
