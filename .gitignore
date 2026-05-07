@@ -38,3 +38,6 @@ next-env.d.ts
 # storage (uploads, generated files, database)
 storage/
 *.db
+
+# claude code (per-user settings)
+.claude/settings.local.json
