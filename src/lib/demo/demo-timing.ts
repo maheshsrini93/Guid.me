@@ -22,7 +22,7 @@ export const DEMO_AGENT_TIMING: Record<string, AgentTiming> = {
   "guideline-enforcer": { startDelayMs: 200, durationMs: 4000, progressSteps: 3 },
   "quality-reviewer": { startDelayMs: 200, durationMs: 5000, progressSteps: 3 },
   "safety-reviewer": { startDelayMs: 200, durationMs: 4500, progressSteps: 3 },
-  "illustration-generator": { startDelayMs: 200, durationMs: 12000, progressSteps: 6 },
+  "illustration-renderer": { startDelayMs: 200, durationMs: 12000, progressSteps: 6 },
   "xml-assembler": { startDelayMs: 200, durationMs: 800, progressSteps: 2 },
 };
 

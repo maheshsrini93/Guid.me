@@ -6,7 +6,7 @@ import type { PipelineState, PipelineStatus } from "@/types/pipeline";
 import { createAgentContext } from "@/lib/agents/context";
 import { sourceAdapter } from "@/lib/agents/source-adapter";
 import { xmlAssembler } from "@/lib/agents/xml-assembler";
-import { illustrationGenerator } from "@/lib/agents/illustration-generator";
+import { illustrationRenderer } from "@/lib/agents/illustration-renderer";
 import { runConfigAgent } from "@/lib/agents/runner";
 import { runVisionAnalyzer } from "@/lib/agents/vision-analyzer";
 import { instructionComposerConfig } from "@/lib/agents/configs/instruction-composer.config";
@@ -163,7 +163,7 @@ export async function runPipeline(
     checkCancellation(jobId, cancelledRef);
     await updateStatus(jobId, "illustrating", state);
     const ctx7 = createAgentContext(jobId, state, cancelledRef);
-    const illustrateResult = await illustrationGenerator.run(ctx7);
+    const illustrateResult = await illustrationRenderer.run(ctx7);
     state.illustrations = illustrateResult.output;
 
     // ── Agent 8: XML Assembler ─────────────────────────────
@@ -315,16 +315,20 @@ const AGENT_ORDER: AgentName[] = [
   "guideline-enforcer",
   "quality-reviewer",
   "safety-reviewer",
-  "illustration-generator",
+  "illustration-renderer",
   "xml-assembler",
 ];
 
 /**
- * Backward-compatible alias for agent_executions rows written before the
- * Phase 6 rename. Read-only — new rows are always written as "source-adapter".
+ * Backward-compatible aliases for agent_executions rows written before
+ * Phase 6 renames. Read-only — new rows always use the new canonical names.
+ *  - "document-extractor"     → "source-adapter"     (T-076)
+ *  - "illustration-generator" → "illustration-renderer" (T-085, ADR-0002)
  */
 function canonicalizeAgentName(name: string): string {
-  return name === "document-extractor" ? "source-adapter" : name;
+  if (name === "document-extractor") return "source-adapter";
+  if (name === "illustration-generator") return "illustration-renderer";
+  return name;
 }
 
 /**
@@ -544,7 +548,7 @@ export async function resumePipeline(jobId: string): Promise<void> {
       checkCancellation(jobId, cancelledRef);
       await updateStatus(jobId, "illustrating", state);
       const ctx7 = createAgentContext(jobId, state, cancelledRef);
-      const illustrateResult = await illustrationGenerator.run(ctx7);
+      const illustrateResult = await illustrationRenderer.run(ctx7);
       state.illustrations = illustrateResult.output;
     }
 

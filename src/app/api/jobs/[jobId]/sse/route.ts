@@ -96,7 +96,7 @@ export async function GET(
     composing: "instruction-composer",
     enforcing: "guideline-enforcer",
     reviewing: "quality-reviewer",
-    illustrating: "illustration-generator",
+    illustrating: "illustration-renderer",
     assembling: "xml-assembler",
   };
   const activeAgent = STATUS_TO_AGENT[job.status ?? ""];

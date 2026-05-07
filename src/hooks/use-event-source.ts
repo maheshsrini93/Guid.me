@@ -11,7 +11,7 @@ export type AgentName =
   | "guideline-enforcer"
   | "quality-reviewer"
   | "safety-reviewer"
-  | "illustration-generator"
+  | "illustration-renderer"
   | "xml-assembler";
 
 export interface AgentState {
@@ -59,7 +59,7 @@ const initialAgents: Record<AgentName, AgentState> = {
   "guideline-enforcer": { name: "guideline-enforcer", displayName: "Guideline Enforcer", status: "idle", progress: 0, message: "Waiting to start" },
   "quality-reviewer": { name: "quality-reviewer", displayName: "Quality Reviewer", status: "idle", progress: 0, message: "Waiting to start" },
   "safety-reviewer": { name: "safety-reviewer", displayName: "Safety Reviewer", status: "idle", progress: 0, message: "Waiting to start" },
-  "illustration-generator": { name: "illustration-generator", displayName: "Illustration Generator", status: "idle", progress: 0, message: "Waiting to start" },
+  "illustration-renderer": { name: "illustration-renderer", displayName: "Illustration Renderer", status: "idle", progress: 0, message: "Waiting to start" },
   "xml-assembler": { name: "xml-assembler", displayName: "XML Assembler", status: "idle", progress: 0, message: "Waiting to start" },
 };
 

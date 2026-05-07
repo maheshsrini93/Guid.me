@@ -13,7 +13,7 @@ const AGENT_CONFIG: Record<AgentName, { icon: React.ElementType; color: string; 
   "guideline-enforcer": { icon: Shield, color: "text-indigo-500", bg: "bg-indigo-500/10" },
   "quality-reviewer": { icon: CheckCircle, color: "text-emerald-500", bg: "bg-emerald-500/10" },
   "safety-reviewer": { icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-500/10" },
-  "illustration-generator": { icon: ImageIcon, color: "text-fuchsia-500", bg: "bg-fuchsia-500/10" },
+  "illustration-renderer": { icon: ImageIcon, color: "text-fuchsia-500", bg: "bg-fuchsia-500/10" },
   "xml-assembler": { icon: Code, color: "text-cyan-500", bg: "bg-cyan-500/10" },
 };
 

@@ -8,6 +8,54 @@ Format: Each entry includes a date, category, and description of the change.
 
 ## 2026-05-07
 
+### Completed — Phase 6 Illustration Renderer Polymorphism (T-085 through T-089)
+
+**Trigger:** ADR-0002 (CAD-render + programmatic overlays for the 3D path) needed code. Agent 7's display name and module layout had to generalize from "Illustration Generator" to "Illustration Renderer" so the CAD branch can plug in without touching the PDF/DOCX behavior.
+
+**Tasks completed:** T-085, T-086, T-087, T-088, T-089.
+
+**Goal:** Polymorphic Agent 7 that dispatches on `state.extractedSource.structuredMetadata`. PDF/DOCX → Gemini Flash Image (unchanged, ~$0.04/image). STEP/CAD → three.js render + Canvas2D overlays ($0).
+
+**Dispatcher + Gemini move (T-085, T-086):**
+- New module `src/lib/agents/illustration-renderer/` with `index.ts` (lifecycle owner), `types.ts` (`IllustrationRendererImpl` contract), `gemini.ts` (existing Phase 4 logic moved verbatim).
+- `src/lib/agents/illustration-generator.ts` deleted.
+- `AgentName` rename: `"illustration-generator"` → `"illustration-renderer"` (DB column, SSE event payloads, UI registry, demo data, demo timing, demo manager).
+- Resume path canonicalizes legacy `"illustration-generator"` rows so retries on jobs run before the rename keep working.
+- Display name now "Illustration Renderer" everywhere.
+
+**CAD base renderer (T-087):**
+- `src/lib/agents/illustration-renderer/cad/base-renderer.ts`. `renderStepBase({ meshes, activeComponentIds, installedComponentIds, outputPath, width, height })` returns `{ filePath, width, height, project, boundsOnScreen }`.
+- IL-008 opacity policy: active=1.0, installed=0.3, hidden=0. Delegates rasterization to existing `renderSingleView` to avoid duplicating the z-buffer rasterizer.
+- Replicates the isometric camera math from `three-renderer.ts` (offsets `(maxExtent*1.8, 1.6, 2.0)`, FOV 30°, near/far ratios) so `project()` and `boundsOnScreen()` map to actual rendered pixels. Uses bbox over *all* meshes (matching `renderSingleView`'s framing behavior — see three-renderer.ts:123).
+
+**Overlay primitives (T-088):**
+- New dep: `@napi-rs/canvas` (prebuilt napi binary — no node-gyp, works with the spaces-in-path worktree). Added to `next.config.ts` `serverExternalPackages` so Turbopack doesn't try to bundle the `.node` binding.
+- Six primitives, one per file under `src/lib/render/overlays/`: `drawPartLabel` (IL-002 with greedy collision avoidance), `drawMotionArrow` (IL-010 straight + curved), `drawRotationIndicator` (IL-011 arc + arrowhead), `drawDetailCallout` (IL-009 source balloon + framed inset), `drawOkNok` (IL-013 borders + ✓/✗ badges + wrapped text), `drawTwoPersonGrip` (IL-015 numbered grip circles + "2 PERSON" badge).
+- Shared `OverlayContext` (`{ canvas, ctx, width, height }`) + `OVERLAY_STYLE` tokens.
+
+**CAD orchestrator (T-089):**
+- `src/lib/agents/illustration-renderer/cad/index.ts`. Registered ahead of `geminiRenderer` in the dispatcher so `structuredMetadata` short-circuits the per-image cost line.
+- Re-parses STEP file once via `parseStep(state.documentPath)` (mesh data isn't persisted in `ExtractedSource`).
+- Per-step: resolve active component IDs (id-equality match against `partsCatalog`, fallback to case-insensitive name match for the pre-T-090 era), call `renderStepBase()`, build `OverlayContext`, blit base, layer overlays per `EnforcedStep` fields, encode + write PNG, intermediate base PNG cleaned up.
+- Anchor resolution: descriptive strings (`arrowDirection`, `rotationTarget`, `gripPositions`) map to pixel coords via `findComponentByName` + `baseResult.project()`, with sane fallbacks (canvas center, default left/right grip points).
+- `parseRotationAmount` understands "¼ turn", "½ turn", "90°", "full", "quarter" etc.
+- OK/NOK (IL-013) compositing deferred — requires a second base render for the NOK case which the current pipeline doesn't supply. Documented in code.
+- Cost line is $0; logs `modelUsed: "internal-cad-renderer"` and `promptVersion: "illustration-renderer.cad@1.0"`.
+
+**Validation:**
+- `pnpm exec tsc --noEmit` passes with zero errors.
+- `pnpm build` succeeds (Turbopack + standalone output).
+- Unit tests: 94/96 pass — same 2 pre-existing failures in `quality-gate.test.ts` (unrelated, present on `main`).
+
+**Files changed:**
+- New: `src/lib/agents/illustration-renderer/{index.ts, types.ts, gemini.ts}`, `src/lib/agents/illustration-renderer/cad/{index.ts, base-renderer.ts}`, `src/lib/render/overlays/{index, labels, arrows, rotation, callout, oknok, grip}.ts`.
+- Deleted: `src/lib/agents/illustration-generator.ts`.
+- Modified: `src/lib/agents/types.ts`, `src/lib/agents/context.ts`, `src/lib/orchestrator/orchestrator.ts`, `src/app/api/jobs/[jobId]/sse/route.ts`, `src/components/pipeline/{agent-card,pipeline-monitor}.tsx`, `src/hooks/use-event-source.ts`, `src/lib/demo/{demo-data,demo-manager,demo-timing}.ts`, `src/types/agents.ts` (renamed input type), `next.config.ts`, `package.json`, `pnpm-lock.yaml`, `docs/tasks.md`.
+
+---
+
+## 2026-05-07
+
 ### Completed — Phase 6 Vision Analyzer Polymorphism (T-083, T-084)
 
 **Trigger:** Vision Analyzer needed to dispatch on the source adapter's output (CAD vs document) so STEP-derived assemblies skip the document-tuned prompt and ride the CAD-specific schema instead.

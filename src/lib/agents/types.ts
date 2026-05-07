@@ -13,7 +13,7 @@ export type AgentName =
   | "guideline-enforcer"
   | "quality-reviewer"
   | "safety-reviewer"
-  | "illustration-generator"
+  | "illustration-renderer"
   | "xml-assembler";
 
 // ============================================================

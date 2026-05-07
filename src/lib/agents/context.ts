@@ -13,7 +13,7 @@ const STATUS_TO_AGENT: Record<string, AgentName> = {
   enforcing: "guideline-enforcer",
   reviewing: "quality-reviewer",
   revising: "guideline-enforcer",
-  illustrating: "illustration-generator",
+  illustrating: "illustration-renderer",
   assembling: "xml-assembler",
 };
 

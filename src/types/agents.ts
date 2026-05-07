@@ -648,10 +648,10 @@ export type HazardType =
   | "tool_safety";
 
 // ============================================================
-// Agent 7: Illustration Generator
+// Agent 7: Illustration Renderer
 // ============================================================
 
-export interface IllustrationGeneratorInput {
+export interface IllustrationRendererInput {
   /** The approved enforced guide */
   enforcedGuide: EnforcedGuide;
   /** Step number to illustrate */

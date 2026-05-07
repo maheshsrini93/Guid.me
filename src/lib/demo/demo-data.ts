@@ -783,7 +783,7 @@ export const DEMO_COST_RECORDS = [
   { agent: "guideline-enforcer", model: "gemini-3.1-flash-lite-preview", costUsd: 0.03, inputTokens: 12000, outputTokens: 4800 },
   { agent: "quality-reviewer", model: "gemini-3.1-pro-preview", costUsd: 0.08, inputTokens: 9200, outputTokens: 2100 },
   { agent: "safety-reviewer", model: "gemini-3.1-pro-preview", costUsd: 0.04, inputTokens: 6800, outputTokens: 1500 },
-  { agent: "illustration-generator", model: "gemini-3.1-flash-image-preview", costUsd: 0.24, inputTokens: 0, outputTokens: 0 },
+  { agent: "illustration-renderer", model: "gemini-3.1-flash-image-preview", costUsd: 0.24, inputTokens: 0, outputTokens: 0 },
   { agent: "xml-assembler", model: "code", costUsd: 0, inputTokens: 0, outputTokens: 0 },
 ];
 

@@ -166,7 +166,7 @@ export async function runDemoPipeline(jobId: string): Promise<void> {
     });
 
     // ── Agent 7: Illustration Generator ────────────────────
-    await simulateAgent(jobId, cancelledRef, "illustrating", "illustration-generator", costs, () => {
+    await simulateAgent(jobId, cancelledRef, "illustrating", "illustration-renderer", costs, () => {
       totalCostUsd += 0.24;
       return [
         { progress: 17, message: "Generating illustration for step 1" },
@@ -542,7 +542,7 @@ function getExecutionOrder(agent: string): number {
     "guideline-enforcer": 4,
     "quality-reviewer": 5,
     "safety-reviewer": 6,
-    "illustration-generator": 7,
+    "illustration-renderer": 7,
     "xml-assembler": 8,
   };
   return order[agent] ?? 0;
