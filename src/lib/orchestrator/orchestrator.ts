@@ -118,7 +118,9 @@ export async function runPipeline(
     state.enforcedGuide = postProcess(state.enforcedGuide);
 
     // ── Validators (Layer 4) ───────────────────────────────
-    const validationFlags = validateGuide(state.enforcedGuide);
+    const validationFlags = validateGuide(state.enforcedGuide, {
+      partsCatalog: state.extractedSource?.structuredMetadata?.partsCatalog,
+    });
     const flagSummary = summarizeFlags(validationFlags);
     // Store flags for later inclusion in XML
     // (flags are informational — they don't block the pipeline)
@@ -521,7 +523,9 @@ export async function resumePipeline(jobId: string): Promise<void> {
       const enforceResult = await runConfigAgent(guidelineEnforcerConfig, ctx4);
       state.enforcedGuide = enforceResult.output;
       state.enforcedGuide = postProcess(state.enforcedGuide);
-      validateGuide(state.enforcedGuide);
+      validateGuide(state.enforcedGuide, {
+        partsCatalog: state.extractedSource?.structuredMetadata?.partsCatalog,
+      });
     }
 
     if (resumeFromIndex <= 4) {

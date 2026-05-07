@@ -327,6 +327,109 @@ describe("validateGuide", () => {
     expect(minFlags.length).toBeGreaterThanOrEqual(1);
     expect(minFlags[0].severity).toBe("warning");
   });
+
+  // ============================================================
+  // T-097: CAD ground-truth validators
+  //
+  // These two validators only run when a deterministic parts catalog is
+  // supplied (CAD path). On the PDF/DOCX path the catalog is undefined and
+  // both validators are no-ops.
+  // ============================================================
+
+  describe("missing-part-coverage (CAD path)", () => {
+    it("does not flag anything when no parts catalog is supplied", () => {
+      const guide = makeValidGuide();
+      const flags = validateGuide(guide);
+      const coverage = flags.filter((f) => f.validator === "missing-part-coverage");
+      expect(coverage).toHaveLength(0);
+    });
+
+    it("flags catalog components that are not referenced in any step", () => {
+      // The default-fixture steps reference "A" and "B"; "C" is in the
+      // catalog but never referenced.
+      const guide = makeValidGuide();
+      const flags = validateGuide(guide, {
+        partsCatalog: [
+          { id: "A", name: "Wooden dowel", quantity: 2 },
+          { id: "B", name: "Side panel", quantity: 1 },
+          { id: "C", name: "Orphan bracket", quantity: 1 },
+        ],
+      });
+      const coverage = flags.filter((f) => f.validator === "missing-part-coverage");
+      expect(coverage).toHaveLength(1);
+      expect(coverage[0].severity).toBe("warning");
+      expect(coverage[0].message).toContain("C");
+      expect(coverage[0].message).toContain("Orphan bracket");
+      // Guide-level flag (no specific step is at fault for omission).
+      expect(coverage[0].stepNumber).toBeNull();
+    });
+
+    it("does not flag components that are referenced even once", () => {
+      const guide = makeValidGuide();
+      const flags = validateGuide(guide, {
+        partsCatalog: [
+          { id: "A", name: "Wooden dowel", quantity: 2 },
+          { id: "B", name: "Side panel", quantity: 1 },
+        ],
+      });
+      const coverage = flags.filter((f) => f.validator === "missing-part-coverage");
+      expect(coverage).toHaveLength(0);
+    });
+  });
+
+  describe("extraneous-part-reference (CAD path)", () => {
+    it("does not flag anything when no parts catalog is supplied", () => {
+      const guide = makeValidGuide({
+        steps: [
+          makeValidStep({
+            parts: [{ id: "X-99", name: "Hallucinated part", quantity: 1 }],
+          }),
+          makeValidStep2(),
+        ],
+      });
+      const flags = validateGuide(guide);
+      const extras = flags.filter((f) => f.validator === "extraneous-part-reference");
+      expect(extras).toHaveLength(0);
+    });
+
+    it("flags step parts whose id is not in the catalog", () => {
+      const guide = makeValidGuide({
+        steps: [
+          makeValidStep({
+            instruction: "Insert dowel A into bracket X-99.",
+            parts: [
+              { id: "A", name: "Wooden dowel", quantity: 2 },
+              { id: "X-99", name: "Hallucinated part", quantity: 1 },
+            ],
+          }),
+          makeValidStep2(),
+        ],
+      });
+      const flags = validateGuide(guide, {
+        partsCatalog: [
+          { id: "A", name: "Wooden dowel", quantity: 2 },
+          { id: "B", name: "Side panel", quantity: 1 },
+        ],
+      });
+      const extras = flags.filter((f) => f.validator === "extraneous-part-reference");
+      expect(extras).toHaveLength(1);
+      expect(extras[0].severity).toBe("error");
+      expect(extras[0].message).toContain("X-99");
+      expect(extras[0].stepNumber).toBe(1);
+    });
+
+    it("does not flag valid catalog references", () => {
+      const guide = makeValidGuide();
+      const flags = validateGuide(guide, {
+        partsCatalog: [
+          { id: "A", name: "Wooden dowel", quantity: 2 },
+          { id: "B", name: "Side panel", quantity: 1 },
+        ],
+      });
+      const extras = flags.filter((f) => f.validator === "extraneous-part-reference");
+      expect(extras).toHaveLength(0);
+    });
+  });
 });
 
 // ============================================================

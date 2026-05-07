@@ -8,7 +8,26 @@ Format: Each entry includes a date, category, and description of the change.
 
 ## 2026-05-07
 
-### Completed — Phase 6 output banner + demo asset scaffold + demo-mode 3D path (T-093, T-094, T-095)
+### Completed — Phase 6 Quality Reviewer CAD cross-validation (T-097)
+
+**Trigger:** With the deterministic CAD parts catalog flowing through Source Adapter → Composer (T-090) → demo (T-095), the Quality Reviewer was still scoring CAD jobs without cross-checking the catalog. A reviewer that approves a guide which silently drops a component, or accepts a hallucinated part ID, defeats the point of having ground truth.
+
+**Tasks completed:** T-097.
+
+**Changes:**
+- `src/lib/quality/validator-registry.ts` — `Validator` interface now takes a `ValidatorContext` second arg; `validateGuide(guide, context = {})` accepts an optional `partsCatalog`. Two new validators (placed at the end of the registry):
+  - `missing-part-coverage` — warning per catalog component that no EnforcedStep references. Guide-level (stepNumber: null).
+  - `extraneous-part-reference` — error per step part whose id is not in the catalog. Step-level. Catches hallucinated or mistyped IDs that slipped past composer grounding.
+  Both are no-ops when the catalog is absent (PDF/DOCX path).
+- `src/lib/orchestrator/orchestrator.ts` — Both validator call sites (main pipeline + retry/resume path) now pass `partsCatalog: state.extractedSource?.structuredMetadata?.partsCatalog`.
+- `src/lib/agents/prompts/quality-reviewer.ts` — Prompt version bumped to `quality-reviewer@1.1`. User prompt now injects the parts catalog as authoritative ground truth when CAD `structuredMetadata` is present, with three cross-validation requirements: coverage (warning, -3 each), no extraneous references (error, -5 each), ID exactness (use catalog ids verbatim). System prompt unchanged so no truncation of the existing scoring criteria.
+- `tests/unit/validator-registry.test.ts` — 6 new vitest cases covering both validators: PDF-path no-op (no catalog supplied), missing component flagged, fully-covered catalog produces no flags, extraneous part flagged with correct severity + step, and valid catalog references pass clean. 25/25 pass; full unit suite is unchanged (the 2 pre-existing `quality-gate.test.ts` failures are not in scope).
+
+**Why:**
+- Without these validators, an LLM-only reviewer can be persuaded by a confident-sounding instruction to approve a guide that omits or misnames CAD parts. Deterministic checks turn that into a hard fail (extraneous → error) or a routed revision (missing → warning, score deduct).
+- Pushing the catalog into the prompt as well lets the LLM produce localized issues with the same vocabulary, which routes cleanly back through the existing revision loop to the Guideline Enforcer.
+
+
 
 **Trigger:** Close out the Phase 6 surface area now that the CAD ingestion stack (T-076–T-082), Vision Analyzer polymorphism (T-083–T-084), Illustration Renderer polymorphism (T-085–T-089), and the user-visible upload path (T-090–T-092) are wired. The output page needed an advisory when the build sequence was inferred from geometry, the demo asset slot needed a canonical home, and the demo manager needed a CAD branch so `DEMO_MODE=true` exercises the 3D path end-to-end.
 

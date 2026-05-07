@@ -1,7 +1,7 @@
 import { getGuidelinesAsString } from "@/lib/guidelines/loader";
 import type { PipelineState } from "@/types/pipeline";
 
-export const PROMPT_VERSION = "quality-reviewer@1.0";
+export const PROMPT_VERSION = "quality-reviewer@1.1";
 
 export function buildQualityReviewerSystemPrompt(): string {
   const wiYaml = getGuidelinesAsString("work-instructions");
@@ -88,13 +88,42 @@ Score each step and the guide as a whole across these categories:
 
 export function buildQualityReviewerUserPrompt(state: PipelineState): string {
   const enforcedGuide = state.enforcedGuide;
+  const structured = state.extractedSource?.structuredMetadata;
 
-  return `Review this enforced guide for quality. Score it against all guidelines and report every issue found.
+  const sections: string[] = [
+    `Review this enforced guide for quality. Score it against all guidelines and report every issue found.`,
+    `## Enforced Guide\n${JSON.stringify(enforcedGuide, null, 2)}`,
+  ];
 
-## Enforced Guide
-${JSON.stringify(enforcedGuide, null, 2)}
+  // CAD path (T-097): inject the deterministic parts catalog as ground truth
+  // and require the reviewer to flag coverage gaps + extraneous references.
+  if (structured?.partsCatalog?.length) {
+    const catalog = structured.partsCatalog
+      .map(
+        (p) =>
+          `  - id="${p.id}"  name="${p.name}"  qty=${p.quantity}` +
+          (p.parentAssemblyPath ? `  path="${p.parentAssemblyPath}"` : "") +
+          (p.material ? `  material="${p.material}"` : "") +
+          (typeof p.mass === "number" ? `  mass=${p.mass}kg` : ""),
+      )
+      .join("\n");
 
-Score the guide from 0-100 and list all issues found. Be thorough but fair — minor formatting issues are "info" severity, structural problems are "warning", and guideline violations are "error".
+    sections.push(`## CAD ground truth (authoritative)
+The Source Adapter parsed a STEP file and produced this deterministic parts catalog. These are the ONLY valid Component IDs. Any part referenced in a step that is not in this list is a hallucination.
 
-Set the decision field based on the score: approved (>= 85), revise (70-84), hold (< 70).`;
+Catalog (${structured.partsCatalog.length} components, sequence=${structured.sequenceSource} @ ${(structured.sequenceConfidence * 100).toFixed(0)}% confidence):
+${catalog}
+
+### Cross-validation requirements
+1. **Coverage** — Every Component above must be referenced in at least one EnforcedStep's \`parts\` array. Flag missing components as category "completeness" with severity "warning" (deduct 3 points each), description "Component {id} ({name}) from CAD parts catalog is not referenced in any step".
+2. **No extraneous references** — Every part referenced in any step's \`parts\` array must appear in the catalog above. Flag any part ID not in the catalog as category "part_reference" with severity "error" (deduct 5 points each), description "Part {id} ({name}) is referenced in step {N} but is not in the CAD parts catalog".
+3. **ID exactness** — Use the catalog \`id\` values verbatim. Do not paraphrase or normalise (e.g. "M5x10" must not become "M5_10" or "M5×10").`);
+  }
+
+  sections.push(
+    `Score the guide from 0-100 and list all issues found. Be thorough but fair — minor formatting issues are "info" severity, structural problems are "warning", and guideline violations are "error".`,
+    `Set the decision field based on the score: approved (>= 85), revise (70-84), hold (< 70).`,
+  );
+
+  return sections.join("\n\n");
 }

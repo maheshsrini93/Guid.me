@@ -1,6 +1,6 @@
 # Guid -- Task List
 
-> **Last Updated:** 2026-05-07 (Output banner + demo asset scaffold + demo-mode 3D path landed: T-093, T-094, T-095 complete)
+> **Last Updated:** 2026-05-07 (Quality Reviewer CAD cross-validation landed: T-097 complete)
 > **Project:** General Unified Industrialization Dashboard
 > **Authoritative Spec:** [`docs/prd.md`](./prd.md)
 
@@ -260,7 +260,7 @@ Task IDs are sequential (`T-001` through `T-095`). Every task declares its depen
 
 ### Quality + Safety adaptations (deferred — v1.1)
 
-- [ ] `T-097` **Quality Reviewer cross-validation against CAD ground truth** (depends: T-082, T-032) -- When `structuredMetadata` is present, Quality Reviewer's prompt receives the deterministic parts catalog and must validate that every Component in the catalog is referenced in at least one EnforcedStep. New validators in `validator-registry.ts`: `missingPartCoverage`, `extraneousPartReference`. Files: `src/lib/agents/configs/quality-reviewer.config.ts`, `src/lib/quality/validator-registry.ts`. Future ADR likely.
+- [x] `T-097` **Quality Reviewer cross-validation against CAD ground truth** (depends: T-082, T-032) -- `validateGuide(guide, { partsCatalog })` now optionally accepts the deterministic CAD catalog from `state.extractedSource.structuredMetadata`. Two new validators activate when present: `missing-part-coverage` (warning per catalog component never referenced; deduct 3 points each in the reviewer prompt) and `extraneous-part-reference` (error per part referenced in a step but absent from the catalog; deduct 5 points). Quality Reviewer user prompt (bumped to `quality-reviewer@1.1`) injects the catalog with metadata (id/name/qty/path/material/mass) and adds explicit cross-validation requirements: coverage, no extras, ID exactness. Orchestrator passes `partsCatalog` from state. PDF/DOCX path is unchanged (catalog undefined → both validators no-op). 6 new vitest cases (25/25 pass). Files: `src/lib/agents/prompts/quality-reviewer.ts`, `src/lib/quality/validator-registry.ts`, `src/lib/orchestrator/orchestrator.ts`, `tests/unit/validator-registry.test.ts`.
 
 ### End-to-end + documentation
 

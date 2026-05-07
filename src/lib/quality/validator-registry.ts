@@ -1,4 +1,4 @@
-import type { EnforcedGuide, EnforcedStep, AllowedVerb } from "@/types/agents";
+import type { EnforcedGuide, EnforcedStep, AllowedVerb, StructuredPartRef } from "@/types/agents";
 
 // ============================================================
 // Quality Flag
@@ -15,13 +15,25 @@ export interface QualityFlag {
   message: string;
 }
 
+/**
+ * Optional ground-truth context passed to the registry.
+ *
+ * `partsCatalog` is the deterministic CAD parts catalog produced by the Source
+ * Adapter (Phase 6, T-082). When present, two validators activate:
+ * `missing-part-coverage` and `extraneous-part-reference` (T-097). Absent on
+ * the PDF/DOCX path — those validators emit no flags.
+ */
+export interface ValidatorContext {
+  partsCatalog?: StructuredPartRef[];
+}
+
 // ============================================================
 // Validator Interface
 // ============================================================
 
 interface Validator {
   name: string;
-  validate(guide: EnforcedGuide): QualityFlag[];
+  validate(guide: EnforcedGuide, context: ValidatorContext): QualityFlag[];
 }
 
 // ============================================================
@@ -714,6 +726,62 @@ const validators: Validator[] = [
       return flags;
     },
   },
+
+  // ── CAD ground-truth validators (T-097) ──
+  // Activated only when a deterministic parts catalog is provided
+  // (CAD path with state.extractedSource.structuredMetadata).
+
+  // Missing part coverage: every Component in the catalog must appear in at
+  // least one EnforcedStep. Detects steps that silently drop a component.
+  {
+    name: "missing-part-coverage",
+    validate(guide, ctx) {
+      if (!ctx.partsCatalog?.length) return [];
+      const referenced = new Set<string>();
+      for (const step of guide.steps) {
+        for (const part of step.parts) {
+          if (part.id) referenced.add(part.id);
+        }
+      }
+      const flags: QualityFlag[] = [];
+      for (const component of ctx.partsCatalog) {
+        if (!referenced.has(component.id)) {
+          flags.push({
+            validator: this.name,
+            severity: "warning",
+            stepNumber: null,
+            message: `Component "${component.name}" (${component.id}) from CAD parts catalog is not referenced in any step`,
+          });
+        }
+      }
+      return flags;
+    },
+  },
+
+  // Extraneous part reference: every part referenced in a step must exist in
+  // the catalog. Detects hallucinated or mistyped part IDs that slipped past
+  // composer grounding.
+  {
+    name: "extraneous-part-reference",
+    validate(guide, ctx) {
+      if (!ctx.partsCatalog?.length) return [];
+      const catalogIds = new Set(ctx.partsCatalog.map((p) => p.id));
+      const flags: QualityFlag[] = [];
+      for (const step of guide.steps) {
+        for (const part of step.parts) {
+          if (part.id && !catalogIds.has(part.id)) {
+            flags.push({
+              validator: this.name,
+              severity: "error",
+              stepNumber: step.stepNumber,
+              message: `Part "${part.name}" (${part.id}) is not in the CAD parts catalog`,
+            });
+          }
+        }
+      }
+      return flags;
+    },
+  },
 ];
 
 // ============================================================
@@ -722,12 +790,19 @@ const validators: Validator[] = [
 
 /**
  * Run all validators against an enforced guide and return quality flags.
+ *
+ * Pass `context.partsCatalog` (from `state.extractedSource.structuredMetadata`)
+ * on the CAD path to activate `missing-part-coverage` and
+ * `extraneous-part-reference`. PDF/DOCX path can omit it.
  */
-export function validateGuide(guide: EnforcedGuide): QualityFlag[] {
+export function validateGuide(
+  guide: EnforcedGuide,
+  context: ValidatorContext = {},
+): QualityFlag[] {
   const allFlags: QualityFlag[] = [];
 
   for (const validator of validators) {
-    const flags = validator.validate(guide);
+    const flags = validator.validate(guide, context);
     allFlags.push(...flags);
   }
 
