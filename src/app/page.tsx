@@ -2,7 +2,19 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Upload, FileText, Settings, ArrowRight, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  Upload,
+  FileText,
+  Settings,
+  ArrowRight,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Box,
+  Film,
+  Info,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,10 +35,40 @@ interface Job {
   completedAt?: string;
 }
 
+type PrimaryKind = "pdf" | "docx" | "step";
+
+const PRIMARY_ACCEPT = ".pdf,.docx,.step,.stp";
+const AUX_ACCEPT = ".mp4,.jt";
+const PRIMARY_MAX_MB = 50;
+const AUX_MAX_MB = 100;
+
+const STEP_EXTENSIONS = [".step", ".stp"];
+const AUX_VIDEO_EXTENSIONS = [".mp4", ".jt"];
+
+function classifyPrimary(file: File): PrimaryKind | null {
+  const name = file.name.toLowerCase();
+  if (file.type === "application/pdf" || name.endsWith(".pdf")) return "pdf";
+  if (
+    file.type ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    name.endsWith(".docx")
+  )
+    return "docx";
+  if (STEP_EXTENSIONS.some((ext) => name.endsWith(ext))) return "step";
+  return null;
+}
+
+function isValidAuxiliary(file: File): boolean {
+  const name = file.name.toLowerCase();
+  return AUX_VIDEO_EXTENSIONS.some((ext) => name.endsWith(ext));
+}
+
 export default function Page() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
+  const [auxiliaryFile, setAuxiliaryFile] = useState<File | null>(null);
+  const [isDraggingPrimary, setIsDraggingPrimary] = useState(false);
+  const [isDraggingAux, setIsDraggingAux] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoadingJobs, setIsLoadingJobs] = useState(true);
@@ -34,9 +76,20 @@ export default function Page() {
   const [domain, setDomain] = useState("general");
   const [qualityThreshold, setQualityThreshold] = useState("85");
 
+  const primaryKind = file ? classifyPrimary(file) : null;
+  const isStep = primaryKind === "step";
+
   useEffect(() => {
     fetchJobs();
   }, []);
+
+  // If the user swaps a STEP file for a PDF/DOCX, drop any auxiliary they
+  // already attached — it's only meaningful for STEP primaries.
+  useEffect(() => {
+    if (!isStep && auxiliaryFile) {
+      setAuxiliaryFile(null);
+    }
+  }, [isStep, auxiliaryFile]);
 
   const fetchJobs = async () => {
     try {
@@ -51,21 +104,19 @@ export default function Page() {
     }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDropPrimary = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
+    setIsDraggingPrimary(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const droppedFile = e.dataTransfer.files[0];
-      validateAndSetFile(droppedFile);
+      validateAndSetFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleDropAux = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingAux(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      validateAndSetAuxiliary(e.dataTransfer.files[0]);
     }
   };
 
@@ -75,17 +126,35 @@ export default function Page() {
     }
   };
 
-  const validateAndSetFile = (file: File) => {
-    const validTypes = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
-    if (!validTypes.includes(file.type)) {
-      alert("Please upload a PDF or DOCX file.");
+  const handleAuxFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      validateAndSetAuxiliary(e.target.files[0]);
+    }
+  };
+
+  const validateAndSetFile = (candidate: File) => {
+    const kind = classifyPrimary(candidate);
+    if (!kind) {
+      alert("Please upload a PDF, DOCX, or STEP (.step / .stp) file.");
       return;
     }
-    if (file.size > 50 * 1024 * 1024) {
-      alert("File size must be less than 50MB.");
+    if (candidate.size > PRIMARY_MAX_MB * 1024 * 1024) {
+      alert(`File size must be less than ${PRIMARY_MAX_MB}MB.`);
       return;
     }
-    setFile(file);
+    setFile(candidate);
+  };
+
+  const validateAndSetAuxiliary = (candidate: File) => {
+    if (!isValidAuxiliary(candidate)) {
+      alert("Explode view must be an MP4 or JT file.");
+      return;
+    }
+    if (candidate.size > AUX_MAX_MB * 1024 * 1024) {
+      alert(`Explode view must be less than ${AUX_MAX_MB}MB.`);
+      return;
+    }
+    setAuxiliaryFile(candidate);
   };
 
   const handleSubmit = async () => {
@@ -95,6 +164,9 @@ export default function Page() {
     try {
       const formData = new FormData();
       formData.append("file", file);
+      if (isStep && auxiliaryFile) {
+        formData.append("auxiliaryFile", auxiliaryFile);
+      }
       formData.append("domain", domain);
       formData.append("qualityThreshold", qualityThreshold);
 
@@ -103,7 +175,10 @@ export default function Page() {
         body: formData,
         cache: "no-store",
       });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.error || `HTTP error ${res.status}`);
+      }
       const data = await res.json();
 
       if (data.jobId) {
@@ -111,7 +186,11 @@ export default function Page() {
       }
     } catch (error) {
       console.error("Upload failed:", error);
-      alert("Failed to start job. Please try again.");
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to start job. Please try again.",
+      );
       setIsSubmitting(false);
     }
   };
@@ -125,40 +204,65 @@ export default function Page() {
             Turn Manuals into <span className="text-primary">Intelligent Guides</span>
           </h1>
           <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-            Upload any technical document, PDF, or DOCX. Our 8-agent AI pipeline will automatically extract, structure, and illustrate a complete work instruction.
+            Upload a PDF, DOCX, or STEP assembly. Our 8-agent AI pipeline will automatically extract, structure, and illustrate a complete work instruction.
           </p>
         </div>
 
         <div className="grid gap-8 md:grid-cols-5">
-          <div className="md:col-span-3">
-            <Card className="h-full border-2">
+          <div className="md:col-span-3 space-y-4">
+            <Card className="border-2">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Upload className="h-5 w-5 text-primary" />
                   Upload Document
                 </CardTitle>
-                <CardDescription>Drag and drop your PDF or DOCX file here (max 50MB).</CardDescription>
+                <CardDescription>
+                  PDF, DOCX, or STEP (.step / .stp). Max {PRIMARY_MAX_MB}MB.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div
-                  className={`relative flex min-h-[300px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center transition-colors ${
-                    isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:bg-accent/50"
+                  className={`relative flex min-h-[260px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center transition-colors ${
+                    isDraggingPrimary
+                      ? "border-primary bg-primary/5"
+                      : "border-muted-foreground/25 hover:bg-accent/50"
                   }`}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDraggingPrimary(true);
+                  }}
+                  onDragLeave={() => setIsDraggingPrimary(false)}
+                  onDrop={handleDropPrimary}
                   onClick={() => document.getElementById("file-upload")?.click()}
                 >
-                  <input id="file-upload" type="file" className="hidden" accept=".pdf,.docx" onChange={handleFileChange} />
+                  <input
+                    id="file-upload"
+                    type="file"
+                    className="hidden"
+                    accept={PRIMARY_ACCEPT}
+                    onChange={handleFileChange}
+                  />
 
                   {file ? (
                     <div className="flex flex-col items-center gap-4">
                       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                        <FileText className="h-8 w-8 text-primary" />
+                        {isStep ? (
+                          <Box className="h-8 w-8 text-primary" />
+                        ) : (
+                          <FileText className="h-8 w-8 text-primary" />
+                        )}
                       </div>
                       <div>
                         <p className="font-medium text-foreground">{file.name}</p>
-                        <p className="text-sm text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                        <p className="text-sm text-muted-foreground">
+                          {(file.size / 1024 / 1024).toFixed(2)} MB
+                          {primaryKind && (
+                            <>
+                              {" · "}
+                              <span className="uppercase">{primaryKind}</span>
+                            </>
+                          )}
+                        </p>
                       </div>
                       <Button
                         variant="outline"
@@ -179,13 +283,99 @@ export default function Page() {
                       </div>
                       <div>
                         <p className="text-lg font-medium">Click to upload or drag and drop</p>
-                        <p className="mt-1 text-sm text-muted-foreground">PDF or DOCX up to 50MB</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          PDF, DOCX, or STEP up to {PRIMARY_MAX_MB}MB
+                        </p>
                       </div>
                     </div>
                   )}
                 </div>
               </CardContent>
             </Card>
+
+            {isStep && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Film className="h-5 w-5 text-primary" />
+                    Explode View (optional)
+                  </CardTitle>
+                  <CardDescription>
+                    MP4 or JT animation showing the assembly sequence. Skip this to use the geometry-inferred fallback.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div
+                    className={`relative flex min-h-[140px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
+                      isDraggingAux
+                        ? "border-primary bg-primary/5"
+                        : "border-muted-foreground/25 hover:bg-accent/50"
+                    }`}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDraggingAux(true);
+                    }}
+                    onDragLeave={() => setIsDraggingAux(false)}
+                    onDrop={handleDropAux}
+                    onClick={() =>
+                      document.getElementById("aux-upload")?.click()
+                    }
+                  >
+                    <input
+                      id="aux-upload"
+                      type="file"
+                      className="hidden"
+                      accept={AUX_ACCEPT}
+                      onChange={handleAuxFileChange}
+                    />
+
+                    {auxiliaryFile ? (
+                      <div className="flex w-full items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <Film className="h-5 w-5 shrink-0 text-primary" />
+                          <div className="min-w-0 text-left">
+                            <p className="truncate text-sm font-medium">
+                              {auxiliaryFile.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {(auxiliaryFile.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Remove explode video"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAuxiliaryFile(null);
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2">
+                        <Film className="h-6 w-6 text-muted-foreground" />
+                        <p className="text-sm">
+                          Drop an MP4 or JT, or click to upload
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Up to {AUX_MAX_MB}MB
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-start gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                    <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                    <span>
+                      No explode view? Guid renders multi-view orthographics and asks Gemini Pro to propose a build order. The output page flags the inferred sequence so you can verify it before use.
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           <div className="md:col-span-2">
@@ -206,6 +396,7 @@ export default function Page() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="general">General Assembly</SelectItem>
+                      <SelectItem value="manufacturing">Manufacturing / Machinery</SelectItem>
                       <SelectItem value="furniture">Furniture & Home</SelectItem>
                       <SelectItem value="automotive">Automotive</SelectItem>
                       <SelectItem value="aerospace">Aerospace</SelectItem>

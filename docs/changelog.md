@@ -8,7 +8,22 @@ Format: Each entry includes a date, category, and description of the change.
 
 ## 2026-05-07
 
-### Completed — Phase 6 Illustration Renderer Polymorphism (T-085 through T-089)
+### Completed — Phase 6 Composer grounding + multi-file API + STEP upload UI (T-090, T-091, T-092)
+
+**Trigger:** Wire the user-visible 3D path. T-090 makes Agent 3 honor the deterministic CAD parts catalog as ground truth; T-091 lets the API accept a STEP primary plus an optional explode-video auxiliary; T-092 surfaces both in the upload UI.
+
+**Tasks completed:** T-090, T-091, T-092.
+
+**Changes:**
+- `src/lib/agents/prompts/instruction-composer.ts` — When `state.extractedSource.structuredMetadata` is present, inject an authoritative parts-catalog table into the user prompt and instruct the composer to use exact CAD `id`/`name` values, follow the catalog's build order, and treat vision-extracted parts as supplementary context only. Prompt version bumped to `instruction-composer@1.1`. PDF/DOCX behaviour unchanged.
+- `src/app/api/jobs/route.ts` — POST accepts `file` (PDF/DOCX/STEP) plus optional `auxiliaryFile` (MP4/JT). Validates combinations: `pdf|docx` standalone, `step` standalone, `step + mp4|jt`. Persists to `storage/jobs/{jobId}/source/{primary,auxiliary}.{ext}` via the Phase 6 storage helpers. Populates `sourceKind`, `auxiliaryPath`, `auxiliaryMimeType` on the job row. STEP files served as `application/octet-stream` are accepted via extension fallback. Auxiliary size cap is `2× MAX_FILE_SIZE_MB` to accommodate explode-view videos. Response now also returns `sourceKind`.
+- `src/app/page.tsx` — Upload dropzone accepts `.pdf`/`.docx`/`.step`/`.stp`. When the primary is STEP, a second optional dropzone appears for the explode video (MP4/JT) with an inline `Info` banner explaining the geometry-inferred fallback. Switching back to a non-STEP primary auto-clears the auxiliary. Added `Manufacturing / Machinery` to the domain selector. Improved error reporting: surfaces the API's `error` field instead of a generic alert.
+
+**Why:**
+- Without T-090, the composer would still rely on Vision Analyzer's vision-only part references — defeating the purpose of having a deterministic STEP-derived catalog.
+- T-091 + T-092 are the missing user-facing entry point for the entire Phase 6 ingestion stack (T-076–T-082, T-083–T-084, T-085–T-089).
+
+
 
 **Trigger:** ADR-0002 (CAD-render + programmatic overlays for the 3D path) needed code. Agent 7's display name and module layout had to generalize from "Illustration Generator" to "Illustration Renderer" so the CAD branch can plug in without touching the PDF/DOCX behavior.
 

@@ -1,6 +1,6 @@
 # Guid -- Task List
 
-> **Last Updated:** 2026-05-07 (Vision Analyzer polymorphism landed: T-083 and T-084 complete)
+> **Last Updated:** 2026-05-07 (Composer grounding + multi-file API + STEP upload UI landed: T-090, T-091, T-092 complete)
 > **Project:** General Unified Industrialization Dashboard
 > **Authoritative Spec:** [`docs/prd.md`](./prd.md)
 
@@ -244,12 +244,12 @@ Task IDs are sequential (`T-001` through `T-095`). Every task declares its depen
 
 ### Composer grounding (depends on T-073)
 
-- [ ] `T-090` **Composer grounding against `structuredMetadata.partsCatalog`** (depends: T-073, T-082) -- Update `instruction-composer.ts` prompt and runner: when `state.extractedSource.structuredMetadata` is present, inject the parts catalog into the composer prompt as authoritative ground truth and instruct it to use those exact part IDs/names. Vision-extracted parts are merged as supplementary context only. No behavior change for PDF/DOCX paths. Files: `src/lib/agents/configs/instruction-composer.config.ts`, `src/lib/agents/prompts/instruction-composer.ts`.
+- [x] `T-090` **Composer grounding against `structuredMetadata.partsCatalog`** (depends: T-073, T-082) -- Update `instruction-composer.ts` prompt and runner: when `state.extractedSource.structuredMetadata` is present, inject the parts catalog into the composer prompt as authoritative ground truth and instruct it to use those exact part IDs/names. Vision-extracted parts are merged as supplementary context only. No behavior change for PDF/DOCX paths. Files: `src/lib/agents/configs/instruction-composer.config.ts`, `src/lib/agents/prompts/instruction-composer.ts`.
 
 ### API + DB + UI changes
 
-- [ ] `T-091` **POST /api/jobs accepts multi-file uploads** (depends: T-074, T-075) -- Update job creation endpoint to accept multipart form with `file` (primary) and optional `auxiliaryFile`. Validate combinations: `pdf | docx` standalone OR `step` standalone OR `step + mp4|jt`. Persist both files to `storage/jobs/{jobId}/source/`. Populate new DB columns (`auxiliaryPath`, `sourceKind`). Files: `src/app/api/jobs/route.ts`.
-- [ ] `T-092` **Upload page UI: multi-file + 3D format support** (depends: T-091, T-030) -- Update upload page to accept STEP (`.stp`, `.step`) alongside PDF/DOCX. When STEP is selected, show optional second dropzone "Explode view (optional, MP4 or JT)". Show explanatory tooltip about the geometry-inferred fallback when explode video is omitted. Update file-validation logic. Add "Manufacturing / Machinery" option to domain selector. Files: `src/app/page.tsx`.
+- [x] `T-091` **POST /api/jobs accepts multi-file uploads** (depends: T-074, T-075) -- Update job creation endpoint to accept multipart form with `file` (primary) and optional `auxiliaryFile`. Validate combinations: `pdf | docx` standalone OR `step` standalone OR `step + mp4|jt`. Persist both files to `storage/jobs/{jobId}/source/`. Populate new DB columns (`auxiliaryPath`, `sourceKind`). Files: `src/app/api/jobs/route.ts`.
+- [x] `T-092` **Upload page UI: multi-file + 3D format support** (depends: T-091, T-030) -- Update upload page to accept STEP (`.stp`, `.step`) alongside PDF/DOCX. When STEP is selected, show optional second dropzone "Explode view (optional, MP4 or JT)". Show explanatory tooltip about the geometry-inferred fallback when explode video is omitted. Update file-validation logic. Add "Manufacturing / Machinery" option to domain selector. Files: `src/app/page.tsx`.
 - [ ] `T-093` **Output page: geometry-inferred banner** (depends: T-091, T-051) -- When `sequenceSource === "geometry-inferred"`, show a prominent advisory banner above the work-instruction viewer: "Sequence inferred from geometry — confidence {N}%. Verify against engineering intent before use." Banner reads from `generated_guides.metadata.sequenceSource` / `sequenceConfidence`. Files: `src/app/output/[jobId]/page.tsx`, result API to surface fields.
 
 ### Demo asset + test corpus
