@@ -42,6 +42,14 @@ export interface PipelineState {
   documentPath: string;
   /** Document MIME type */
   documentMimeType: string;
+  /**
+   * Phase 6: Optional auxiliary file (e.g. an explode-view MP4 that ships
+   * alongside a STEP). Wired through from the jobs row (see T-074, T-091)
+   * and consumed by the CAD source-adapter sub-implementation (T-082).
+   */
+  auxiliaryPath?: string;
+  /** MIME type of the auxiliary file */
+  auxiliaryMimeType?: string;
 
   // --- Agent Outputs (populated as pipeline progresses) ---
   extractedSource?: ExtractedSource;

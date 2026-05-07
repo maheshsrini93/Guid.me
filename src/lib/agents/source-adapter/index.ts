@@ -1,3 +1,4 @@
+import path from "path";
 import type { PipelineState } from "@/types/pipeline";
 import type { SourceAdapterInput, ExtractedSource } from "@/types/agents";
 import { BaseCodeAgent } from "../base-code-agent";
@@ -6,19 +7,25 @@ import type { AgentContext, AgentName } from "../types";
 import type { SourceAdapterImpl } from "./types";
 import { pdfImpl } from "./pdf";
 import { docxImpl } from "./docx";
+import { cadImpl } from "./cad";
 
-const ACCEPTED_MIME_TYPES = [
+const ACCEPTED_MIME_TYPES = new Set([
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-] as const;
+  "model/step",
+  "application/step",
+  "application/STEP",
+  // Browsers commonly hand STEP files over as octet-stream — allowed when
+  // the extension confirms it (see acceptsByExtension).
+  "application/octet-stream",
+]);
+const STEP_EXTENSIONS = [".step", ".stp"];
 
 /**
  * Registered sub-implementations, walked in order. The first whose `canHandle`
- * returns true handles the input. Phase 6 adds `cadImpl` here (T-082).
- *
- * See ADR-0001 for the dispatch contract.
+ * returns true handles the input. See ADR-0001 for the dispatch contract.
  */
-const IMPLS: SourceAdapterImpl[] = [pdfImpl, docxImpl];
+const IMPLS: SourceAdapterImpl[] = [pdfImpl, docxImpl, cadImpl];
 
 /**
  * Agent 1: Source Adapter (formerly Document Extractor).
@@ -42,17 +49,22 @@ export class SourceAdapter extends BaseCodeAgent<
     if (!state.documentMimeType) {
       throw new AgentValidationError("source-adapter", "No document MIME type provided.");
     }
-    if (!ACCEPTED_MIME_TYPES.includes(state.documentMimeType as typeof ACCEPTED_MIME_TYPES[number])) {
+    const ext = path.extname(state.documentPath).toLowerCase();
+    const mimeAccepted = ACCEPTED_MIME_TYPES.has(state.documentMimeType);
+    const extAccepted = STEP_EXTENSIONS.includes(ext);
+    if (!mimeAccepted && !extAccepted) {
       throw new AgentValidationError(
         "source-adapter",
-        `Unsupported MIME type: ${state.documentMimeType}. Expected PDF or DOCX.`,
+        `Unsupported input: ${state.documentMimeType} (${ext}). Expected PDF, DOCX, or STEP.`,
       );
     }
 
     return {
       filePath: state.documentPath,
-      mimeType: state.documentMimeType as SourceAdapterInput["mimeType"],
+      mimeType: state.documentMimeType,
       jobId: state.jobId,
+      auxiliaryPath: state.auxiliaryPath,
+      auxiliaryMimeType: state.auxiliaryMimeType,
     };
   }
 
@@ -64,14 +76,21 @@ export class SourceAdapter extends BaseCodeAgent<
     if (!impl) {
       throw new AgentValidationError(
         "source-adapter",
-        `No source-adapter sub-implementation handles MIME type: ${input.mimeType}`,
+        `No source-adapter sub-implementation handles input: mime=${input.mimeType} ext=${path.extname(input.filePath)}`,
       );
     }
     return impl.extract(input, context);
   }
 
   summarize(output: ExtractedSource): string {
-    return `Extracted ${output.documentMetadata.pageCount} pages from ${output.documentMetadata.filename} (${output.documentMetadata.format})`;
+    const base = `Extracted ${output.documentMetadata.pageCount} ${output.structuredMetadata ? "frames" : "pages"} from ${output.documentMetadata.filename} (${output.documentMetadata.format})`;
+    if (output.structuredMetadata) {
+      const parts = output.structuredMetadata.partsCatalog.length;
+      const seq = output.structuredMetadata.sequenceSource;
+      const conf = (output.structuredMetadata.sequenceConfidence * 100).toFixed(0);
+      return `${base}; ${parts} components, sequence=${seq} (${conf}% confidence)`;
+    }
+    return base;
   }
 }
 

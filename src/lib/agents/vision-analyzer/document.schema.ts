@@ -1,7 +1,7 @@
 import { SchemaType, type GenerationConfig } from "@google/generative-ai";
 
 /**
- * Gemini responseSchema for Agent 2: Vision Analyzer.
+ * Gemini responseSchema for Agent 2: Vision Analyzer (document path — PDF/DOCX).
  * Enforces the RawPageExtraction shape at the API level.
  *
  * v2.0 — Rich descriptions for Gemini 3 (field-level guidance lives here,
@@ -9,7 +9,7 @@ import { SchemaType, type GenerationConfig } from "@google/generative-ai";
  * parentStepNumber, spatialRelationships, arrowType, fastener quantity,
  * toolId, hasTwoPersonWarning, hasSubSteps.
  */
-export const visionAnalyzerSchema: GenerationConfig["responseSchema"] = {
+export const documentVisionSchema: GenerationConfig["responseSchema"] = {
   type: SchemaType.OBJECT,
   description:
     "Structured extraction from a single assembly instruction page image. One object per page.",

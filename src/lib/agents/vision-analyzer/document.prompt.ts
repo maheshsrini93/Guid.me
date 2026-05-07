@@ -1,8 +1,8 @@
 import type { PipelineState } from "@/types/pipeline";
 
-export const PROMPT_VERSION = "vision-analyzer@3.0";
+export const DOCUMENT_VISION_PROMPT_VERSION = "vision-analyzer-document@3.0";
 
-export function buildVisionAnalyzerSystemPrompt(): string {
+export function buildDocumentVisionSystemPrompt(): string {
   return `You are an expert visual analyzer for IKEA-style assembly instruction manuals — wordless, image-only documents where all meaning is conveyed through drawings, arrows, numbers, and icons.
 
 Report ONLY what you can see in the image. Never infer hidden content or hallucinate parts not visible. Use factual, observation-based descriptions — not narrative prose.
@@ -31,7 +31,7 @@ EXTRACTION RULES:
 9. Tool icons identify tools — record in toolsShown[] with a toolIcon description.`;
 }
 
-export function buildVisionAnalyzerUserPrompt(
+export function buildDocumentVisionUserPrompt(
   state: PipelineState,
   context?: unknown,
 ): string {

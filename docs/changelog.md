@@ -8,6 +8,111 @@ Format: Each entry includes a date, category, and description of the change.
 
 ## 2026-05-07
 
+### Completed — Phase 6 Vision Analyzer Polymorphism (T-083, T-084)
+
+**Trigger:** Vision Analyzer needed to dispatch on the source adapter's output (CAD vs document) so STEP-derived assemblies skip the document-tuned prompt and ride the CAD-specific schema instead.
+
+**Tasks completed:** T-083, T-084.
+
+**Goal:** Make Agent 2 input-agnostic. The dispatcher inspects `state.extractedSource.structuredMetadata`; the document path stays unchanged for PDF/DOCX, and a new CAD path consumes keyframe pairs (or the inferred sequence) without re-extracting parts/tools/quantities the source adapter already produced.
+
+**Dispatcher restructure (T-083):**
+- New module `src/lib/agents/vision-analyzer/`. Old config files removed: `src/lib/agents/configs/vision-analyzer.config.ts`, `src/lib/agents/prompts/vision-analyzer.ts`, `src/lib/agents/schemas/vision-analyzer.schema.ts`.
+- New `VisionAnalyzerImpl` interface in `vision-analyzer/types.ts` (`name`, `canHandle(state)`, `run(ctx)`) — same shape as `SourceAdapterImpl`.
+- `vision-analyzer/document.ts` re-hosts the existing `runConfigAgent`-driven config (`documentVisionConfig`) and exports `documentVisionImpl` whose `canHandle` returns true when `structuredMetadata` is absent. Prompt and schema relocated to `document.prompt.ts` and `document.schema.ts` with a renamed prompt version (`vision-analyzer-document@3.0`).
+- `vision-analyzer/index.ts` exports `runVisionAnalyzer(ctx)` which walks `[cadVisionImpl, documentVisionImpl]` and delegates to the first matching impl. Throws `AgentValidationError` if no impl handles the state.
+- Orchestrator (`src/lib/orchestrator/orchestrator.ts`) imports `runVisionAnalyzer` and replaces both call sites (initial run and resume) — `visionAnalyzerConfig` is no longer imported there.
+
+**CAD vision sub-implementation (T-084):**
+- `src/lib/agents/vision-analyzer/cad.ts` exposes `cadVisionImpl`. `canHandle` returns true when `structuredMetadata` is present. Two paths:
+  - **`sequenceSource: "explode-video"`** → walks frames pairwise. For each transition (frame[n-1] → frame[n]) it picks an active-Components candidate window from the parts catalog (proportional to step position, ±25%, clamped), reads both keyframes, and calls Gemini Flash with the trimmed CAD schema. Per-pair retries via `withRetry`, rate-limited via `waitForSlot(FLASH_MODEL)`. Falls back to per-component synthesis if the source has only one frame.
+  - **`sequenceSource: "geometry-inferred"`** → emits one minimal `RawFrameExtraction` per ordered Component with **zero Gemini calls** (cost $0). First step uses verb `Place` with target `workspace`; subsequent steps use `Attach` against the running assembly. Confidence is carried over from `meta.sequenceConfidence`.
+- Trimmed CAD schema (`cad.schema.ts`): only `actions`, `arrows` (rotation cues only — translation arrows come from Agent 7), `complexity`, `confidence`, `confirmationCue`. Required fields: `actions`, `complexity`, `confidence`. Parts/quantities/tools/warnings are intentionally absent — they come from `structuredMetadata` and are merged in by Agent 3.
+- CAD prompt (`cad.prompt.ts`): keyframe-pair diff with active-Components candidate list, assembly tree as context, and a "previous step summary" slot for cross-step continuity. Honesty rules: empty `actions` + low confidence rather than invented transitions; subject must be a Component name/ID from the candidate list.
+- Two-person heuristic (`estimateTwoPersonNeed`): flags `pageIndicators.hasTwoPersonWarning` true when an active Component has mass > 15kg or any bounding-box dimension > 1m. Uses `StructuredPartRef.mass` and `boundingBox` populated by the STEP parser.
+- Lifecycle parity with `runConfigAgent`: emits `agent:start` / `agent:complete` / `pipeline:error`, records cost, persists an `agent_executions` row (model `"code"` for the synthesis path, `FLASH_MODEL` for the explode-video path).
+
+**Tests (8 new, all passing — `tests/unit/vision-analyzer-dispatcher.test.ts`):**
+- Dispatcher selection: document impl handles state without `structuredMetadata`; CAD impl handles state with it; neither handles a state without an extracted source; dispatcher throws when no impl matches.
+- CAD synthesis fallback: emits one extraction per Component, preserves stable `stepNumber`, sets `partsShown`/`toolsShown`/`fasteners` to empty arrays, reports `costUsd: 0` and `model: "code"`, emits `agent:start`/`agent:complete` events, records exactly one cost entry and one persisted execution row.
+- First step uses `Place` verb against `workspace`; subsequent steps use `Attach` against `previously-installed assembly`.
+- Two-person heuristic flags heavy Components and clears for light ones.
+- Confidence is clamped to [0, 1] when the source adapter reports a value > 1.
+
+**Verified:**
+- `pnpm build` succeeds.
+- `pnpm lint` reports no new warnings or errors (vision-analyzer module is clean).
+- `pnpm vitest run tests/unit/vision-analyzer-dispatcher.test.ts` — 8/8 pass.
+- Pre-existing quality-gate test failures are unrelated to this work (verified by stashing changes — same failures with both states).
+
+**Files added/modified:**
+- Added: `src/lib/agents/vision-analyzer/{index,types,document,document.prompt,document.schema,cad,cad.prompt,cad.schema}.ts`, `tests/unit/vision-analyzer-dispatcher.test.ts`.
+- Removed: `src/lib/agents/configs/vision-analyzer.config.ts`, `src/lib/agents/prompts/vision-analyzer.ts`, `src/lib/agents/schemas/vision-analyzer.schema.ts`.
+- Modified: `src/lib/orchestrator/orchestrator.ts` (2 call-site updates), `docs/tasks.md` (T-083, T-084 marked complete).
+
+---
+
+### Completed — Phase 6 CAD Ingestion Stack (T-078 through T-082)
+
+**Trigger:** Implementation slice on `worktree-phase-6-3d-model-input` branch.
+
+**Tasks completed:** T-078, T-079, T-080, T-081, T-082.
+
+**Goal:** Land all four CAD ingestion sub-stages and wire them into the Source Adapter dispatcher so STEP files (with or without an authored explode video) flow through Agent 1 and produce `ExtractedSource.structuredMetadata`. From here, agents 2 / 3 / 7 can be made CAD-aware without further changes to Agent 1.
+
+**STEP parser (T-078):**
+- Added `occt-import-js` (LGPL-2.1 WASM build of OpenCascade) plus `three`, `pngjs`, and their `@types`.
+- New module `src/lib/agents/source-adapter/cad/step-parser.ts` (`parseStep(filePath)`): walks the `occt-import-js` hierarchy depth-first, emits one `StructuredPartRef` per Component (assembly-path-based stable IDs), per-Component triangle meshes (`Float32Array` positions + optional normals + `Uint32Array` indices) and axis-aligned bounding boxes. Handles missing names with `"unnamed"` slugs and preserves STEP-attribute colors when present.
+- Module declaration `src/types/occt-import-js.d.ts` since the package ships no `.d.ts`.
+
+**Keyframe extractor (T-079):**
+- New module `src/lib/agents/source-adapter/cad/keyframe-extractor.ts`. Strategy:
+  - ffmpeg samples the explode video at 10 fps and 480-px wide thumbnails.
+  - `pngjs` decodes consecutive samples; we compute mean-absolute-pixel-delta as a 1D motion signal.
+  - 3-frame box-filter smoothing → motion/stall state machine (motion > 6.0, stall < 1.5, min stall length 3 frames).
+  - For each motion → stall transition, emit a keyframe at the stall midpoint. First frame and last frame always included; if no motion is detected at all, fall back to evenly-spaced samples.
+- Re-extracts each keyframe at full resolution via a second ffmpeg call (`-ss N -frames:v 1`), writes PNGs to `storage/jobs/{jobId}/keyframes/`, cleans up the diff-resolution samples.
+- ffmpeg presence is probed lazily (cached after first call) and surfaces a clear install hint on miss, matching the pdftoppm pattern.
+
+**Multi-view renderer (T-080):**
+- Headless-gl was the original plan; on macOS its node-gyp build breaks against any path containing a space (clang interprets spaces as argument separators). Rather than ship a fragile native dep, the renderer is a pure-TS software rasterizer in `src/lib/render/three-renderer.ts`:
+  - Three.js's `Vector3` / `Matrix4` for camera & projection math (no `WebGLRenderer`).
+  - Per-triangle barycentric scan-line rasterization with a `Float32Array` Z-buffer.
+  - Per-triangle Lambert shading (35% ambient + 65% diffuse) with stable hash-based palette colors when STEP attributes don't provide one.
+  - 4 canonical views (top, front, side, isometric); ortho frustums fit the bounding box with 5% padding; iso uses a 30° FOV perspective.
+  - Per-component opacity overrides (used by the future T-087 base render to fade installed Parts per IL-008).
+  - PNG output via `pngjs`. Public API: `renderAssemblyViews(meshes, outDir, opts)` and `renderSingleView(meshes, view, filePath, opts)` — the implementation is swappable so a hardware-WebGL backend can drop in later.
+
+**Sequence inference (T-081):**
+- New module `src/lib/agents/source-adapter/cad/sequence-inference.ts`. Calls Gemini Pro with the parts catalog, assembly tree, and the four multi-view PNGs. Strict JSON schema (`SchemaType.OBJECT`) enforces per-step `componentId` + `rationale` + overall `confidence` (0-1) + `reasoning`.
+- Prompt encodes the standard sequencing principles (base/fixture first, bottom-up, sub-assemblies before integration, inserted-into precedes inserted, fasteners last, symmetry handling).
+- Validation: invalid Component IDs are dropped, missing IDs are appended at the end, confidence is capped at 0.4 if the inferred sequence wasn't a valid permutation of the catalog. Cost is recorded onto the Source Adapter's ledger via `context.recordCost`.
+- New helper `generateTextWithImages` in `src/lib/gemini/client.ts` (multi-image input — also future-needed by the T-084 CAD Vision Analyzer for keyframe pairs).
+
+**CAD sub-implementation (T-082):**
+- `src/lib/agents/source-adapter/cad/index.ts` — top-level `cadImpl: SourceAdapterImpl` registered alongside `pdfImpl` / `docxImpl` in the dispatcher. Branches on auxiliary file presence:
+  - With explode video → `parseStep` → `extractKeyframes` → `structuredMetadata.sequenceSource = "explode-video"`, confidence 1.0.
+  - STEP only → `parseStep` → `renderAssemblyViews` → `inferSequence` → `structuredMetadata.sequenceSource = "geometry-inferred"` with model-reported confidence; parts catalog is reordered into the inferred build order.
+- Multi-view renders are also copied into the standard `pages/` directory so Agent 2 receives them as plain `Frame[]` — no agent past 1 needs to know whether the source was a STEP.
+- Reports sub-progress (`Parsing STEP` / `Extracting keyframes` / `Rendering multi-view CAD images` / `Inferring build sequence with Gemini Pro`) so the SSE-driven UI doesn't appear stuck during the heavier CAD path.
+
+**Pipeline plumbing:**
+- `PipelineState` carries optional `auxiliaryPath` / `auxiliaryMimeType`; `SourceAdapterInput` extended likewise. `SourceAdapterMimeType` widened to include `model/step` / `application/step` / `application/STEP` / `application/octet-stream` (extension fallback for browsers that mislabel STEP).
+- `runPipeline` and `resumePipeline` hydrate the auxiliary fields from the job row so the CAD sub-impl can locate the explode video without changing the existing `runPipeline(jobId, documentPath, mimeType)` signature.
+- `SourceAdapter.summarize` now reports parts-count + sequence source/confidence when CAD metadata is present.
+
+**Tests (12 new, all passing):**
+- `tests/unit/keyframe-selection.test.ts` (7) — pure motion/stall state-machine cases including no-motion fallback and tail handling.
+- `tests/unit/three-renderer.test.ts` (3) — synthetic two-cube assembly rendered to all four views, opacity-0 hides components, blank PNG fallback.
+- `tests/unit/step-parser.test.ts` (2) — module loads lazily, parser fails fast on missing/non-STEP content with a clear error.
+
+**Out of scope (deferred):**
+- Vision Analyzer dispatcher / CAD prompt (T-083, T-084).
+- Illustration Renderer rename + CAD overlay primitives (T-085 through T-089).
+- Composer grounding against the parts catalog (T-090).
+- Multi-file upload API + UI (T-091, T-092) — until then the CAD path is reachable only by manually pre-populating `auxiliaryPath` on the jobs row or by hitting the orchestrator with a STEP file as the primary upload.
+- Demo asset + test corpus (T-094, T-096).
+
 ### Completed — Phase 6 Foundation Slice (T-073 through T-077)
 
 **Trigger:** Implementation slice on `worktree-phase-6-3d-model-input` branch (commit `c085e9e`).

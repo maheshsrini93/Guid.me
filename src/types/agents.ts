@@ -2,15 +2,34 @@
 // Agent 1: Source Adapter
 // ============================================================
 
+/**
+ * Recognised primary-input MIME types. STEP is detected by extension as well,
+ * since browsers and OSes label .stp/.step files inconsistently
+ * (`application/octet-stream` is common). The CAD sub-implementation matches
+ * either the canonical `model/step` MIME or the file extension.
+ */
+export type SourceAdapterMimeType =
+  | "application/pdf"
+  | "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  | "model/step"
+  | "application/step"
+  | "application/STEP"
+  | "application/octet-stream";
+
 export interface SourceAdapterInput {
-  /** Path to the uploaded file on local storage */
+  /** Path to the uploaded primary file on local storage */
   filePath: string;
-  /** MIME type of the uploaded file */
-  mimeType:
-    | "application/pdf"
-    | "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  /** MIME type of the primary file */
+  mimeType: SourceAdapterMimeType | string;
   /** Unique job identifier */
   jobId: string;
+  /**
+   * Optional auxiliary file path (e.g. an explode-view MP4 alongside a STEP).
+   * Phase 6: present only when the user uploads a paired CAD asset.
+   */
+  auxiliaryPath?: string;
+  /** MIME type of the auxiliary file (e.g. `video/mp4`) */
+  auxiliaryMimeType?: string;
 }
 
 /**

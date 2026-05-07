@@ -1,14 +1,33 @@
-import { FLASH_MODEL, PRO_MODEL } from "@/lib/gemini/models";
+/**
+ * Vision Analyzer — document path (PDF/DOCX).
+ *
+ * Wraps `runConfigAgent()` with the per-page vision config that already
+ * existed before Phase 6. No behavior change vs the pre-dispatcher world; the
+ * file moved here so the vision-analyzer module is self-contained.
+ *
+ * Selected by the dispatcher when `state.extractedSource.structuredMetadata`
+ * is absent (i.e. the source adapter produced page rasters but no CAD-aware
+ * metadata).
+ */
+import { PRO_MODEL } from "@/lib/gemini/models";
+import type { PipelineState } from "@/types/pipeline";
 import type { RawFrameExtraction } from "@/types/agents";
-import { AgentValidationError, type AgentConfig } from "../types";
-import { visionAnalyzerSchema } from "../schemas/vision-analyzer.schema";
 import {
-  PROMPT_VERSION,
-  buildVisionAnalyzerSystemPrompt,
-  buildVisionAnalyzerUserPrompt,
-} from "../prompts/vision-analyzer";
+  AgentValidationError,
+  type AgentConfig,
+  type AgentContext,
+  type AgentResult,
+} from "../types";
+import { runConfigAgent } from "../runner";
+import { documentVisionSchema } from "./document.schema";
+import {
+  DOCUMENT_VISION_PROMPT_VERSION,
+  buildDocumentVisionSystemPrompt,
+  buildDocumentVisionUserPrompt,
+} from "./document.prompt";
+import type { VisionAnalyzerImpl } from "./types";
 
-export const visionAnalyzerConfig: AgentConfig<RawFrameExtraction[]> = {
+export const documentVisionConfig: AgentConfig<RawFrameExtraction[]> = {
   name: "vision-analyzer",
   displayName: "Vision Analyzer",
   executionOrder: 2,
@@ -20,7 +39,7 @@ export const visionAnalyzerConfig: AgentConfig<RawFrameExtraction[]> = {
     maxOutputTokens: 8192,
   },
 
-  responseSchema: visionAnalyzerSchema,
+  responseSchema: documentVisionSchema,
 
   retryConfig: {
     maxAttempts: 3,
@@ -55,12 +74,12 @@ export const visionAnalyzerConfig: AgentConfig<RawFrameExtraction[]> = {
     },
   ],
 
-  promptVersion: PROMPT_VERSION,
+  promptVersion: DOCUMENT_VISION_PROMPT_VERSION,
   usesVision: true,
   invocationMode: "per-page",
 
-  buildSystemPrompt: buildVisionAnalyzerSystemPrompt,
-  buildUserPrompt: buildVisionAnalyzerUserPrompt,
+  buildSystemPrompt: buildDocumentVisionSystemPrompt,
+  buildUserPrompt: buildDocumentVisionUserPrompt,
 
   validateInput(state) {
     if (!state.extractedSource) {
@@ -78,11 +97,9 @@ export const visionAnalyzerConfig: AgentConfig<RawFrameExtraction[]> = {
   },
 
   parseOutput(raw) {
-    // In per-page mode, raw is an array of per-page results
     if (Array.isArray(raw)) {
       return raw as RawFrameExtraction[];
     }
-    // Single page result — wrap in array
     return [raw as RawFrameExtraction];
   },
 
@@ -100,5 +117,20 @@ export const visionAnalyzerConfig: AgentConfig<RawFrameExtraction[]> = {
       .map(([t, n]) => `${n} ${t}`)
       .join(", ");
     return `Analyzed ${output.length} pages: ${totalSteps} steps found, ${partsPages} parts page(s)${typeStr ? ` (${typeStr})` : ""}`;
+  },
+};
+
+export const documentVisionImpl: VisionAnalyzerImpl = {
+  name: "document",
+
+  canHandle(state: PipelineState): boolean {
+    // Document path runs whenever the extracted source has no CAD-aware
+    // metadata. Source kind detection happens in the source adapter; we just
+    // observe its output.
+    return !!state.extractedSource && !state.extractedSource.structuredMetadata;
+  },
+
+  run(ctx: AgentContext): Promise<AgentResult<RawFrameExtraction[]>> {
+    return runConfigAgent(documentVisionConfig, ctx);
   },
 };

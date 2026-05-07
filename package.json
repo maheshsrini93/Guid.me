@@ -37,6 +37,8 @@
     "mammoth": "^1.11.0",
     "motion": "^12.38.0",
     "next": "^16.1.6",
+    "occt-import-js": "^0.0.23",
+    "pngjs": "^7.0.0",
     "postcss": "^8.5.8",
     "radix-ui": "^1.4.3",
     "react": "^19.2.4",
@@ -44,18 +46,23 @@
     "react-syntax-highlighter": "^16.1.1",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.1",
+    "three": "^0.184.0",
     "typescript": "^5.9.3",
     "ulid": "^3.0.2",
     "yaml": "^2.8.2"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["better-sqlite3"]
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.3.3",
+    "@types/pngjs": "^6.0.5",
     "@types/react-syntax-highlighter": "^15.5.13",
+    "@types/three": "^0.184.1",
     "@vitest/coverage-v8": "^4.1.2",
     "agent-browser": "github:vercel-labs/agent-browser",
     "drizzle-kit": "^0.31.9",

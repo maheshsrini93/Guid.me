@@ -8,7 +8,7 @@ import { sourceAdapter } from "@/lib/agents/source-adapter";
 import { xmlAssembler } from "@/lib/agents/xml-assembler";
 import { illustrationGenerator } from "@/lib/agents/illustration-generator";
 import { runConfigAgent } from "@/lib/agents/runner";
-import { visionAnalyzerConfig } from "@/lib/agents/configs/vision-analyzer.config";
+import { runVisionAnalyzer } from "@/lib/agents/vision-analyzer";
 import { instructionComposerConfig } from "@/lib/agents/configs/instruction-composer.config";
 import { guidelineEnforcerConfig } from "@/lib/agents/configs/guideline-enforcer.config";
 import { qualityReviewerConfig } from "@/lib/agents/configs/quality-reviewer.config";
@@ -56,11 +56,18 @@ export async function runPipeline(
   const cancelledRef = { current: false };
   cancelledJobs.set(jobId, cancelledRef);
 
+  // Phase 6: read auxiliary file fields off the job row so the CAD source
+  // adapter can locate the explode video without a signature change to
+  // `runPipeline`. The auxiliary path is populated by POST /api/jobs (T-091).
+  const jobRow = db.select().from(jobs).where(eq(jobs.id, jobId)).get();
+
   const state: PipelineState = {
     jobId,
     status: "pending",
     documentPath,
     documentMimeType: mimeType,
+    auxiliaryPath: jobRow?.auxiliaryPath ?? undefined,
+    auxiliaryMimeType: jobRow?.auxiliaryMimeType ?? undefined,
     textRevisionCount: 0,
     costs: [],
     totalCostUsd: 0,
@@ -86,7 +93,7 @@ export async function runPipeline(
     checkCancellation(jobId, cancelledRef);
     await updateStatus(jobId, "analyzing", state);
     const ctx2 = createAgentContext(jobId, state, cancelledRef);
-    const visionResult = await runConfigAgent(visionAnalyzerConfig, ctx2);
+    const visionResult = await runVisionAnalyzer(ctx2);
     state.frameExtractions = visionResult.output;
 
     // ── Agent 3: Instruction Composer ──────────────────────
@@ -365,6 +372,8 @@ export async function resumePipeline(jobId: string): Promise<void> {
     status: "pending",
     documentPath: job.filePath,
     documentMimeType: job.mimeType,
+    auxiliaryPath: job.auxiliaryPath ?? undefined,
+    auxiliaryMimeType: job.auxiliaryMimeType ?? undefined,
     textRevisionCount: job.textRevisionCount ?? 0,
     costs: [],
     totalCostUsd: job.totalCostUsd ?? 0,
@@ -479,7 +488,7 @@ export async function resumePipeline(jobId: string): Promise<void> {
       checkCancellation(jobId, cancelledRef);
       await updateStatus(jobId, "analyzing", state);
       const ctx2 = createAgentContext(jobId, state, cancelledRef);
-      const visionResult = await runConfigAgent(visionAnalyzerConfig, ctx2);
+      const visionResult = await runVisionAnalyzer(ctx2);
       state.frameExtractions = visionResult.output;
     }
 

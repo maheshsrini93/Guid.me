@@ -244,6 +244,65 @@ export async function generateTextWithVision(
 }
 
 /**
+ * Generate structured output from multiple input images (e.g. multi-view CAD
+ * renders for sequence inference, or consecutive explode-video keyframes for
+ * the CAD vision analyzer). Used by Phase 6 CAD agents.
+ */
+export async function generateTextWithImages<T>(
+  model: string,
+  systemPrompt: string,
+  userPrompt: string,
+  images: Array<{ data: Buffer; mimeType: string }>,
+  responseSchema?: GenerationConfig["responseSchema"],
+  options?: GenerateOptions,
+): Promise<StructuredGenerationResult<T> | TextGenerationResult> {
+  const client = getClient();
+  const generativeModel = client.getGenerativeModel({
+    model,
+    systemInstruction: systemPrompt,
+  });
+
+  const imageParts = images.map((img) => ({
+    inlineData: {
+      data: img.data.toString("base64"),
+      mimeType: img.mimeType,
+    },
+  }));
+
+  const generationConfig: GenerationConfig = {
+    temperature: options?.temperature,
+    maxOutputTokens: options?.maxOutputTokens,
+    topP: options?.topP,
+    topK: options?.topK,
+    ...(responseSchema
+      ? { responseMimeType: "application/json", responseSchema }
+      : {}),
+  };
+
+  const contents: Content[] = [
+    {
+      role: "user",
+      parts: [...imageParts, { text: userPrompt }],
+    },
+  ];
+
+  const result = await generativeModel.generateContent({
+    contents,
+    generationConfig,
+  });
+
+  const text = result.response.text();
+  const { inputTokens, outputTokens } = extractTokenCounts(result);
+  const costUsd = calculateCost(model, inputTokens, outputTokens);
+
+  if (responseSchema) {
+    return { parsed: safeJsonParse<T>(text), inputTokens, outputTokens, costUsd };
+  }
+
+  return { text, inputTokens, outputTokens, costUsd };
+}
+
+/**
  * Generate an image using Gemini's image generation model.
  * Uses the REST API directly since the @google/generative-ai SDK
  * doesn't support responseModalities needed for image generation.
