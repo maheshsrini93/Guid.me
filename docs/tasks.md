@@ -1,10 +1,10 @@
 # Guid -- Task List
 
-> **Last Updated:** 2026-03-04 (Rich Work Instruction Viewer T-066–T-068 completed)
+> **Last Updated:** 2026-05-07 (Phase 6 added: 3D Model Input, T-073–T-095)
 > **Project:** General Unified Industrialization Dashboard
 > **Authoritative Spec:** [`docs/prd.md`](./prd.md)
 
-Task IDs are sequential (`T-001` through `T-069`). Every task declares its dependencies explicitly. Tasks within a milestone are ordered to maximize parallel execution.
+Task IDs are sequential (`T-001` through `T-095`). Every task declares its dependencies explicitly. Tasks within a milestone are ordered to maximize parallel execution.
 
 ---
 
@@ -204,6 +204,72 @@ Task IDs are sequential (`T-001` through `T-069`). Every task declares its depen
 
 ---
 
+## Phase 6: 3D Model Input
+
+> **Goal:** Accept STEP (CAD assembly) files as a third input type alongside PDF/DOCX. Agents 1, 2, and 7 become polymorphic, dispatching on the presence of `structuredMetadata`. Demo asset is a hand-curated 10-15-Part Assembly with explode view; bare STEP inputs degrade gracefully via Gemini-Pro-based geometry inference. Per-job cost for 3D inputs drops ~75% vs PDF.
+>
+> **Architecture:** [ADR-0001](./adr/0001-source-adapter-pattern.md), [ADR-0002](./adr/0002-polymorphic-illustration-agent.md). **Glossary:** [`CONTEXT.md`](../CONTEXT.md).
+
+### Type system + storage scaffolding (parallelizable)
+
+- [ ] `T-073` **Type system extensions for input-agnostic pipeline** (depends: T-003) -- Generalize `ExtractedDocument` → `ExtractedSource { frames: Frame[], documentMetadata, structuredMetadata? }`; rename `ExtractedPage` → `Frame`; add `StructuredMetadata`, `AssemblyNode`, extended `StructuredPartRef` (with `parentAssemblyPath`, optional `mass`, `material`, `boundingBox`); extend `PipelineState` to carry `extractedSource` instead of `extractedDocument`. Files: `src/types/agents.ts`, `src/types/pipeline.ts`. Update all internal references in agents 2-8 to consume the renamed shape -- no behavior change yet, just type-level rename + field generalization.
+- [ ] `T-074` **DB schema migration: multi-file source** (depends: T-073, T-002) -- Generalize `jobs` table: `documentPath`/`documentMimeType` fields stay (becomes the "primary source" for the auxiliary file); add `auxiliaryPath`/`auxiliaryMimeType` columns nullable; add `sourceKind` enum (`pdf | docx | step | step+explode-video`); add `sequenceSource` (`explode-video | geometry-inferred | n/a`) and `sequenceConfidence` (0-1, nullable). Drizzle migration generated and applied. Files: `src/lib/db/schema.ts`.
+- [ ] `T-075` **Storage layout extension** (depends: T-006) -- Update `file-storage.ts` helpers to support per-job source directory `storage/jobs/{jobId}/source/{primary, auxiliary}` while preserving existing `storage/uploads/` for backward compatibility on existing jobs. New helpers: `getSourceDir(jobId)`, `getPrimarySourcePath(jobId, ext)`, `getAuxiliarySourcePath(jobId, ext)`. Files: `src/lib/utils/file-storage.ts`.
+
+### Source Adapter restructure (depends on T-073)
+
+- [ ] `T-076` **Rename `DocumentExtractor` → `SourceAdapter` + dispatcher** (depends: T-073) -- Move `src/lib/agents/document-extractor.ts` to `src/lib/agents/source-adapter/index.ts`. Keep `BaseCodeAgent` inheritance. `execute()` dispatches by detecting input type (MIME + extension) and delegates to a sub-implementation interface `SourceAdapterImpl`. Update orchestrator references and all DB enum values (`agent_executions.agent_name`). Display name: "Source Adapter".
+- [ ] `T-077` **Move PDF/DOCX into sub-implementations** (depends: T-076) -- Extract existing PDF logic (`extractPdf` + `extractWithDocling`-PDF-path) to `src/lib/agents/source-adapter/pdf.ts`; DOCX logic to `src/lib/agents/source-adapter/docx.ts`. Each exports a `SourceAdapterImpl` producing `ExtractedSource` (with `structuredMetadata` undefined). Verify Phase 1-5 PDF/DOCX flows still pass end-to-end via existing demo and test corpus.
+
+### CAD ingestion stack (parallelizable after T-076)
+
+- [ ] `T-078` **STEP parser via `occt-import-js`** (depends: T-076) -- Add `occt-import-js` (WASM, OpenCascade compiled) dependency. Implement `parseStep(filePath)` returning parts catalog (StructuredPartRef[]), assembly tree (AssemblyNode), per-part bounding boxes, per-part B-rep-derived triangle meshes. Validate Docker image compatibility — note this in deployment readme. Files: `src/lib/agents/source-adapter/cad/step-parser.ts`.
+- [ ] `T-079` **Explode-video keyframe extraction** (depends: T-076) -- Add `ffmpeg`-based frame extraction. Implement `extractKeyframes(mp4Path)` that detects motion-stall keyframes by computing frame-difference (mean absolute pixel delta) and emitting frames at local minima. Output: ordered `Frame[]` with timestamps. Empirical threshold tuning to be done against demo asset and test corpus. Files: `src/lib/agents/source-adapter/cad/keyframe-extractor.ts`.
+- [ ] `T-080` **Multi-view renderer (three.js + headless-gl)** (depends: T-076) -- Set up `three` + `headless-gl` Node-side rendering. Implement `renderAssemblyViews(meshes, transforms)` returning orthographic top/front/side + isometric PNGs at 1024×1024. Camera framing auto-derived from full assembly bounding box. Used both for STEP-only fallback (T-081) and for Agent 7 CAD path (T-088). Validate `headless-gl` Linux/Docker compatibility — fall back to Puppeteer if needed (note in T-074 deliverables). Files: `src/lib/render/three-renderer.ts`.
+- [ ] `T-081` **Sequence inference (Option A fallback)** (depends: T-078, T-080) -- Gemini Pro prompt taking parts catalog + assembly tree + multi-view renders, returns proposed step ordering as a list of Component IDs with overall confidence (0-1). Triggered only when explode video is absent. Output written into `structuredMetadata.sequenceSource = "geometry-inferred"` with confidence. Files: `src/lib/agents/source-adapter/cad/sequence-inference.ts`, plus prompt + schema files.
+- [ ] `T-082` **CAD sub-implementation** (depends: T-077, T-078, T-079, T-081) -- Top-level `src/lib/agents/source-adapter/cad/index.ts` orchestrating the sub-stages: STEP parse → branch on auxiliary file presence → (explode video → keyframe extract) OR (no auxiliary → multi-view render + sequence inference) → produce `ExtractedSource` with `structuredMetadata`. Reports sub-progress via `context.reportProgress` (`Parsing STEP`, `Extracting keyframes`, `Rendering multi-views`, `Inferring sequence`).
+
+### Vision Analyzer polymorphism (depends on T-076 + T-082)
+
+- [ ] `T-083` **Vision Analyzer dispatcher restructure** (depends: T-076) -- Move `src/lib/agents/configs/vision-analyzer.config.ts` + prompt + schema into `src/lib/agents/vision-analyzer/document.ts` (existing behavior, no change). Add dispatcher `src/lib/agents/vision-analyzer/index.ts` choosing impl by `state.extractedSource.structuredMetadata` presence. PDF/DOCX path returns identical results to before.
+- [ ] `T-084` **CAD vision sub-implementation** (depends: T-082, T-083) -- New trimmed prompt for CAD path: input is consecutive keyframe pair `(frame[n-1], frame[n])` plus the active Components for step n (from `structuredMetadata.partsCatalog`); output populates only `actions[]`, `arrows[]` (rotation indicators if any), `confidence`, `complexity`, `confirmationCue`. Parts/quantities/tools/warnings come from `structuredMetadata` directly, merged in by Agent 3. Files: `src/lib/agents/vision-analyzer/cad.ts`, prompt + schema.
+
+### Illustration Renderer polymorphism (depends on T-076 + T-080 + T-082)
+
+- [ ] `T-085` **Rename `IllustrationGenerator` → `IllustrationRenderer` + dispatcher** (depends: T-076) -- Move `src/lib/agents/illustration-generator.ts` to `src/lib/agents/illustration-renderer/index.ts`. Dispatcher chooses sub-implementation by `structuredMetadata` presence. Update DB enum values (`agent_executions.agent_name`), pipeline UI agent registry, and SSE event names (preserving backward compatibility for existing jobs). Display name: "Illustration Renderer".
+- [ ] `T-086` **Move existing Gemini logic to sub-implementation** (depends: T-085) -- Extract existing per-step Gemini Flash Image logic to `src/lib/agents/illustration-renderer/gemini.ts`. PDF/DOCX path is unchanged in behavior.
+- [ ] `T-087` **CAD renderer sub-implementation: base render** (depends: T-080, T-085) -- Per-step three.js scene composition: load full Assembly (T-080 mesh data), set active Parts to opacity 1.0 (IL-008) and previously-installed Parts to opacity 0.3, hide not-yet-installed Parts. Isometric camera (IL-001). Render to 1600×1200 PNG. No Gemini call. Reports `costUsd: 0`, `modelUsed: "internal-cad-renderer"`. Files: `src/lib/agents/illustration-renderer/cad/base-renderer.ts`.
+- [ ] `T-088` **Programmatic overlay primitives** (depends: T-087) -- SVG/canvas overlay layer reading `EnforcedStep` annotation fields ([src/types/agents.ts:329-349](../src/types/agents.ts:329)) and drawing them on top of the base render. Primitives: `drawPartLabel(component, anchor)` (IL-002), `drawMotionArrow(start, end, direction)` (IL-010), `drawRotationIndicator(target, direction, amount)` (IL-011), `drawDetailCallout(subject, region)` (IL-009), `drawOkNok(okFrame, nokFrame, descriptions)` (IL-013), `drawTwoPersonGrip(positions)` (IL-015). Leader-line collision avoidance for labels. Files: `src/lib/render/overlays/{labels,arrows,rotation,callout,oknok,grip}.ts`.
+- [ ] `T-089` **CAD illustration sub-implementation** (depends: T-087, T-088) -- Top-level `src/lib/agents/illustration-renderer/cad/index.ts` orchestrating: for each step, call base renderer, then layer overlays per the EnforcedStep fields, write PNG to `storage/jobs/{jobId}/illustrations/step-NNN.png`. Returns `GeneratedIllustration[]` matching the existing shape. Cost: $0.
+
+### Composer grounding (depends on T-073)
+
+- [ ] `T-090` **Composer grounding against `structuredMetadata.partsCatalog`** (depends: T-073, T-082) -- Update `instruction-composer.ts` prompt and runner: when `state.extractedSource.structuredMetadata` is present, inject the parts catalog into the composer prompt as authoritative ground truth and instruct it to use those exact part IDs/names. Vision-extracted parts are merged as supplementary context only. No behavior change for PDF/DOCX paths. Files: `src/lib/agents/configs/instruction-composer.config.ts`, `src/lib/agents/prompts/instruction-composer.ts`.
+
+### API + DB + UI changes
+
+- [ ] `T-091` **POST /api/jobs accepts multi-file uploads** (depends: T-074, T-075) -- Update job creation endpoint to accept multipart form with `file` (primary) and optional `auxiliaryFile`. Validate combinations: `pdf | docx` standalone OR `step` standalone OR `step + mp4|jt`. Persist both files to `storage/jobs/{jobId}/source/`. Populate new DB columns (`auxiliaryPath`, `sourceKind`). Files: `src/app/api/jobs/route.ts`.
+- [ ] `T-092` **Upload page UI: multi-file + 3D format support** (depends: T-091, T-030) -- Update upload page to accept STEP (`.stp`, `.step`) alongside PDF/DOCX. When STEP is selected, show optional second dropzone "Explode view (optional, MP4 or JT)". Show explanatory tooltip about the geometry-inferred fallback when explode video is omitted. Update file-validation logic. Add "Manufacturing / Machinery" option to domain selector. Files: `src/app/page.tsx`.
+- [ ] `T-093` **Output page: geometry-inferred banner** (depends: T-091, T-051) -- When `sequenceSource === "geometry-inferred"`, show a prominent advisory banner above the work-instruction viewer: "Sequence inferred from geometry — confidence {N}%. Verify against engineering intent before use." Banner reads from `generated_guides.metadata.sequenceSource` / `sequenceConfidence`. Files: `src/app/output/[jobId]/page.tsx`, result API to surface fields.
+
+### Demo asset + test corpus
+
+- [ ] `T-094` **Hand-curated 3D demo asset** (depends: none -- can start anytime) -- Build a 10-15-Part Assembly in Fusion 360 or FreeCAD (recommended subjects: small geared mechanism, clamping vice, benchtop pulley, servo gripper). Author an Explode View. Export STEP (AP242) and explode-animation MP4. Commit to `storage/demo-assets/v1-demo/{assembly.stp, explode.mp4, README.md}` with provenance and license note. Used as the canonical demo asset for `DEMO_MODE=true` 3D path.
+- [ ] `T-095` **Demo mode 3D extension** (depends: T-094, T-082, T-089, T-054) -- Extend `src/lib/demo/` with cached pipeline outputs for the 3D demo asset (Source Adapter ExtractedSource, Vision Analyzer per-keyframe extractions, Composer output, Enforcer output, review scores, CAD-rendered illustrations, final XML). Demo manager dispatches by source kind. Realistic timing per CAD-path agent (longer Source Adapter, faster Agent 7).
+- [ ] `T-096` **Test corpus: open-source-hardware STEP files** (depends: none -- can start anytime) -- Collect 5-10 STEP files from RepRap, OpenROV, OSE, NASA open CAD, or similar OSHW-licensed sources. Document each asset's license and provenance in `tests/fixtures/3d/README.md`. Used to exercise the STEP-parse, multi-view-render, and bare-STEP fallback paths. Some assets without explode views to specifically exercise Option A inference.
+
+### Quality + Safety adaptations (deferred — v1.1)
+
+- [ ] `T-097` **Quality Reviewer cross-validation against CAD ground truth** (depends: T-082, T-032) -- When `structuredMetadata` is present, Quality Reviewer's prompt receives the deterministic parts catalog and must validate that every Component in the catalog is referenced in at least one EnforcedStep. New validators in `validator-registry.ts`: `missingPartCoverage`, `extraneousPartReference`. Files: `src/lib/agents/configs/quality-reviewer.config.ts`, `src/lib/quality/validator-registry.ts`. Future ADR likely.
+
+### End-to-end + documentation
+
+- [ ] `T-098` **End-to-end test: explode-video path** (depends: T-082, T-084, T-089, T-090, T-091, T-094) -- Upload demo asset (STEP + explode MP4) → verify Source Adapter produces structured metadata with `sequenceSource: "explode-video"` → verify Agents 2-8 run end-to-end → verify illustrations are CAD renders ($0 cost line for Agent 7) → verify quality score >= 85 → verify XML validates → verify total per-job cost < $0.30.
+- [ ] `T-099` **End-to-end test: STEP-only fallback** (depends: T-081, T-082, T-091, T-093, T-096) -- Upload a STEP from the test corpus without an explode video → verify sequence inference runs → verify `sequenceSource: "geometry-inferred"` and confidence reported → verify output page shows the advisory banner → verify pipeline completes (even at lower confidence, it should not refuse).
+- [ ] `T-100` **Documentation updates: changelog, master-plan** (depends: T-098, T-099) -- Update `docs/changelog.md` with Phase 6 entries; update `docs/master-plan.md` to mention 3D input as a supported source kind; add brief note in `CLAUDE.md` agent table referencing `SourceAdapter` + `IllustrationRenderer` + ADRs.
+
+---
+
 ## Dependency Graph Summary
 
 ### Critical Path
@@ -250,6 +316,46 @@ T-001 (scaffold)
 | M3 -> M4 | XML builder enables illustration refs | T-040 -> T-048 |
 | M3 -> M5 | Full orchestrator enables demo mode | T-041 -> T-054 |
 | M4 -> M5 | Illustrations enable end-to-end test | T-047 -> T-064 |
+
+---
+
+### Phase 6 Critical Path
+
+```
+T-073 (type extensions)
+  -> T-076 (Source Adapter rename + dispatcher)
+    -> T-082 (CAD sub-implementation, needs T-077, T-078, T-079, T-081)
+      -> T-090 (Composer grounding)
+        -> T-098 (E2E explode-video path, needs also T-084, T-089, T-091, T-094)
+```
+
+**Critical path:** T-073 -> T-076 -> T-082 -> T-090 -> T-098
+
+### Phase 6 Parallelism Opportunities
+
+| Parallel Group | Tasks | Prerequisite |
+|----------------|-------|-------------|
+| **Scaffolding (start of phase)** | T-073, T-074, T-075 | Existing codebase |
+| **Demo + corpus (start anytime)** | T-094, T-096 | None — work in parallel with all coding tasks |
+| **PDF/DOCX moves into sub-files** | T-077 | T-076 |
+| **CAD ingestion sub-stages** | T-078, T-079, T-080 | T-076 (each independent) |
+| **Sequence inference** | T-081 | T-078 + T-080 (both meshes and renders needed) |
+| **Vision restructure + CAD impl** | T-083, T-084 | T-076; T-084 also needs T-082 |
+| **Illustration restructure + CAD impl** | T-085, T-086, T-087, T-088 | T-080; T-088 chained on T-087 |
+| **API + UI + output banner** | T-091, T-092, T-093 | T-074, T-075 (DB + storage) |
+| **Demo mode 3D path** | T-095 | T-094, T-082, T-089, T-054 |
+| **Quality cross-validation (deferred)** | T-097 | T-082 (can be deferred to v1.1) |
+| **End-to-end tests** | T-098, T-099 | All of above |
+
+### Phase 6 Cross-Subsystem Dependencies
+
+| From | To | Via Tasks |
+|---|---|---|
+| Type extensions | Everything | T-073 -> T-076, T-090 |
+| Source Adapter dispatcher | All polymorphic agents | T-076 -> T-083, T-085 |
+| CAD Source Adapter output | Vision + Composer + Renderer | T-082 -> T-084, T-090, T-098 |
+| Multi-view renderer | Both fallback inference + Agent 7 base render | T-080 -> T-081, T-087 |
+| Demo asset | Demo mode + E2E test | T-094 -> T-095, T-098 |
 
 ---
 

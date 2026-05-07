@@ -6,6 +6,38 @@ Format: Each entry includes a date, category, and description of the change.
 
 ---
 
+## 2026-05-07
+
+### Planned — Phase 6: 3D Model Input (T-073 through T-100, planning artifacts only)
+
+**Trigger:** `/grill-with-docs` design session on `feat/3d-model-input` branch.
+
+**Tasks added:** T-073 through T-100 (all open). T-100 (final documentation sweep) intentionally left open.
+
+**Architecture decisions captured:**
+- **`docs/adr/0001-source-adapter-pattern.md`** — Single polymorphic Source Adapter (renamed from Document Extractor) for multi-format inputs. Adds STEP (CAD) ingestion alongside PDF/DOCX. Output type generalizes to `ExtractedSource { frames, structuredMetadata? }`. Rejected alternatives: two parallel ingest agents (rejected for orchestrator complexity); native NX in v1 (deferred to v2 due to Siemens licensing); LLM-only sequence inference as primary (kept as fallback only).
+- **`docs/adr/0002-polymorphic-illustration-agent.md`** — Agent 7 renames to Illustration Renderer and dispatches on `structuredMetadata` presence. CAD inputs render directly from the engineer's geometry via three.js + headless-gl with programmatic SVG/canvas overlays for IL-002/008/010/011/013/015 annotations. PDF/DOCX inputs continue using Gemini Flash Image. Per-job cost for 3D inputs drops from ~$0.93 to ~$0.21–$0.26 (~75% reduction). Establishes the cross-cutting "dispatch on `structuredMetadata` presence" contract.
+
+**New domain documentation:**
+- **`CONTEXT.md`** (created at repo root) — Glossary covering Assembly (CAD noun, distinct from "assembly" the verb), Component, Part (with collision note vs IKEA usage), STEP, Explode View, Build sequence, Demo asset, Source Adapter, ExtractedSource, Frame, Keyframe, Illustration Renderer, and the Dispatch contract.
+
+**Updated planning documents:**
+- **`docs/implementation-plan.md`** — Added Phase 6 section (architectural shifts table, 14 subsystem deliverables, 3D-pipeline cost model, risks/unknowns to validate during scaffolding) and three new entries to the Technical Decisions Log (Decisions 8, 9, 10) referencing ADRs 0001 and 0002.
+- **`docs/tasks.md`** — 28 new tasks T-073 through T-100, organized into 8 parallelizable groups, with explicit dependency declarations. Critical path: T-073 → T-076 → T-082 → T-090 → T-098. Phase 6 dependency graph and parallelism table appended at the bottom.
+- **`docs/master-plan.md`** — Updated §7.1 (pipeline diagram), §7.5 (illustrations now dual-path), §7.8 (cost transparency adds 3D figure), §7.9 (upload accepts STEP), §11 (Agent Models and Costs table now distinguishes PDF/DOCX vs CAD paths), §12 (Phase 6 added, prior phases marked completed), §13 (Future Vision adds native NX integration and improved geometry-only inference).
+- **`CLAUDE.md`** — Updated agent table to reflect Source Adapter / Illustration Renderer renames and polymorphic behavior. Pointers to ADR-0001, ADR-0002, and `CONTEXT.md` added.
+
+**Scope confirmed during the design session:**
+- Assembly instructions only (not manufacturing instructions like milling/drilling/turning).
+- v1 input format: STEP (AP242 preferred). Native NX deferred to v2.
+- v1 supports both STEP+explode-video (high-confidence path) and bare STEP (Option A geometry-inferred fallback with explicit confidence flagging).
+- Demo asset: hand-curated 10-15-Part Assembly authored in Fusion 360 or FreeCAD with an explode view, shipping at `storage/demo-assets/v1-demo/`.
+- Test corpus: 5-10 STEP files from open-source hardware repos (RepRap, OpenROV, OSE) with explicit OSHW licenses, at `tests/fixtures/3d/`.
+
+**No code changes in this changelog entry** — only planning artifacts. Implementation tasks T-073 through T-099 remain open.
+
+---
+
 ## 2026-03-05
 
 ### Added — Pipeline Retry / Resume from Failure Point (T-069 through T-072)

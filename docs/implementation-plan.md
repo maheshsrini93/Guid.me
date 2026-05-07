@@ -1,8 +1,10 @@
 # Guid -- Implementation Plan
 
-> **Last Updated:** 2026-03-04
-> **Status:** Active -- Phase 1 completed, Phase 2 next
+> **Last Updated:** 2026-05-07 (Phase 6 added: 3D Model Input)
+> **Status:** Active -- Phases 0-5 completed; Phase 6 in progress on `feat/3d-model-input`
 > **Authoritative Spec:** [`docs/prd.md`](./prd.md)
+> **Architecture decisions:** [`docs/adr/`](./adr/)
+> **Domain glossary:** [`CONTEXT.md`](../CONTEXT.md)
 
 ---
 
@@ -472,6 +474,66 @@ Goal: Production-quality demo experience, pre-cached fallback mode, rehearsed 5-
 | 5.6 | Demo rehearsal: upload -> monitor -> review in under 5 minutes | manual |
 | 5.7 | Performance optimization (SSE reconnection, image lazy loading) | various |
 
+### Phase 6: 3D Model Input -- IN PROGRESS
+
+Goal: Accept STEP (CAD assembly) files as a third input type alongside PDF/DOCX. Pipeline becomes input-agnostic; agents 1, 2, and 7 become polymorphic. Per-job cost for 3D inputs drops to ~$0.23 (75% reduction vs PDF). Architecture decisions captured in [ADR-0001](./adr/0001-source-adapter-pattern.md) and [ADR-0002](./adr/0002-polymorphic-illustration-agent.md).
+
+**Scope** -- assembly instructions only (not manufacturing). v1 input format is STEP; native NX deferred to v2. v1 supports STEP+explode-video (high-confidence path) **and** bare STEP (Option A geometry-inferred fallback with confidence flag). PDF/DOCX flows are preserved unchanged.
+
+**Architectural shifts**
+
+| Concern | Before Phase 6 | After Phase 6 |
+|---|---|---|
+| Agent 1 | `DocumentExtractor`, polymorphic over PDF/DOCX | `SourceAdapter`, polymorphic over PDF/DOCX/CAD/... — sub-implementations under `src/lib/agents/source-adapter/` |
+| Agent 1 output type | `ExtractedDocument { pages, ... }` | `ExtractedSource { frames, structuredMetadata? }` -- `frames` always present, `structuredMetadata` only for CAD-aware sources |
+| Agent 2 | Single prompt per page | Polymorphic; trimmed CAD prompt consumes consecutive keyframe pairs from explode-video |
+| Agent 7 | `IllustrationGenerator`, calls Gemini Flash Image for every step | `IllustrationRenderer`, polymorphic; CAD inputs render via three.js + headless-gl with programmatic SVG/canvas overlays (no Gemini call); PDF/DOCX inputs unchanged |
+| Dispatch contract | n/a | Agents adapt to CAD-aware inputs by checking `structuredMetadata` presence -- not by branching on input MIME type or domain. See ADR-0002. |
+
+**Phase 6 subsystems**
+
+| Subsystem | Responsibility | Key Files |
+|---|---|---|
+| 6.1 Type extensions | `ExtractedSource`, `Frame`, `StructuredMetadata`, `AssemblyNode`, extended `StructuredPartRef` | `src/types/agents.ts`, `src/types/pipeline.ts` |
+| 6.2 Multi-file storage + DB | jobs table accepts primary + auxiliary file paths; storage layout `storage/jobs/{jobId}/source/{primary,auxiliary}` | `src/lib/db/schema.ts`, `src/lib/utils/file-storage.ts` |
+| 6.3 Source Adapter dispatcher | Rename agent + index dispatcher; move PDF/DOCX into sub-implementations | `src/lib/agents/source-adapter/{index,pdf,docx,cad}.ts` |
+| 6.4 STEP parsing | `occt-import-js` (WASM) reads `.STP/.STEP` files, produces parts catalog + assembly tree + per-part bounding boxes + B-rep-derived meshes | `src/lib/agents/source-adapter/cad/step-parser.ts` |
+| 6.5 Explode-video keyframe extraction | `ffmpeg`-based frame-difference thresholding to find motion-stall keyframes; one keyframe per assembly step | `src/lib/agents/source-adapter/cad/keyframe-extractor.ts` |
+| 6.6 Multi-view renderer | three.js + `headless-gl` Node-side rendering of full Assembly to orthographic top/front/side + isometric (used both for STEP-only fallback inference inputs and Agent 7 CAD path) | `src/lib/render/three-renderer.ts` |
+| 6.7 Sequence inference (Option A fallback) | Gemini Pro prompt with parts catalog + tree + multi-views, returns proposed step ordering with confidence; only invoked when explode video is absent | `src/lib/agents/source-adapter/cad/sequence-inference.ts` |
+| 6.8 Vision Analyzer polymorphism | Restructure to dispatcher; CAD sub-implementation with trimmed prompt over consecutive keyframe pairs | `src/lib/agents/vision-analyzer/{index,document,cad}.ts` |
+| 6.9 Illustration Renderer polymorphism | Rename + restructure; CAD sub-implementation renders Assembly per step + layers programmatic overlays | `src/lib/agents/illustration-renderer/{index,gemini,cad}.ts`, `src/lib/render/overlays/` |
+| 6.10 Composer grounding | When `structuredMetadata` present, prefer `partsCatalog` over vision-deduced part references | `src/lib/agents/prompts/instruction-composer.ts`, runner update |
+| 6.11 Multi-file upload API + UI | POST /api/jobs accepts STEP + optional explode video as multi-file form; upload page accepts both | `src/app/api/jobs/route.ts`, `src/app/page.tsx` |
+| 6.12 Output page UX | Banner: "Sequence inferred from geometry -- verify against engineering intent" when sequence source is geometry-inferred | `src/app/output/[jobId]/page.tsx` |
+| 6.13 Demo asset + mode | Hand-curated 10-15-Part Assembly with explode view; cached results for `DEMO_MODE=true` 3D path | `storage/demo-assets/v1-demo/`, `src/lib/demo/` |
+| 6.14 Test corpus | 5-10 STEP files from open-source hardware repos (RepRap, OpenROV, OSE) with explicit OSHW licenses | `tests/fixtures/3d/` |
+
+**3D pipeline cost model (per-job, 12-step Assembly)**
+
+| Agent | Behavior for CAD path | Est. cost |
+|---|---|---|
+| 1. Source Adapter (CAD) | STEP parse + keyframe extract (deterministic) | $0.00 |
+| 1. Source Adapter (CAD, STEP-only fallback) | + Gemini Pro sequence inference | ~$0.05 |
+| 2. Vision Analyzer (CAD) | Trimmed prompt over keyframe pairs | ~$0.04 |
+| 3. Instruction Composer | Same as PDF path (with grounded parts) | ~$0.02 |
+| 4. Guideline Enforcer | Unchanged | ~$0.03 |
+| 5. Quality Reviewer | Unchanged | ~$0.08 |
+| 6. Safety Reviewer | Unchanged | ~$0.04 |
+| 7. Illustration Renderer (CAD) | Internal three.js render + overlays | $0.00 |
+| 8. XML Assembler | Unchanged | $0.00 |
+| **Total (explode-video path)** | | **~$0.21** |
+| **Total (STEP-only fallback)** | | **~$0.26** |
+
+A 75% reduction vs PDF path's ~$0.93. The collapse is driven by Agent 7 going from Gemini Flash Image to internal renderer.
+
+**Risks and unknowns to validate during scaffolding**
+
+- `occt-import-js` Docker compatibility — WASM module compilation in production image needs verification.
+- `headless-gl` Node version compatibility — historically brittle on Linux. May need to fall back to `puppeteer` headless-Chromium rendering if `headless-gl` blocks.
+- Frame-difference keyframe detection threshold — empirical tuning required against demo asset and several test-corpus assets. Likely needs adaptive thresholding (assemblies with continuous motion vs discrete steps).
+- Gemini Pro's actual reliability on geometry-inferred sequencing for assemblies above ~15 parts — confidence flagging is the user-facing safety net, but the floor of usefulness needs measurement.
+
 ---
 
 ## 6. Component Dependencies Map
@@ -641,6 +703,30 @@ Goal: Production-quality demo experience, pre-cached fallback mode, rehearsed 5-
 - Re-running enforcement with reviewer feedback is simpler than a separate revision agent
 - Maximum 2 revision loops prevents infinite cycles
 - Keeps the pipeline linear with a single well-defined loop point
+
+### Decision 8: Polymorphic Source Adapter (replaces "Document Extractor")
+
+**Context:** Phase 6 adds STEP (CAD assembly) input alongside PDF/DOCX. The data shape and processing requirements differ substantially: CAD inputs carry deterministic parts catalog, hierarchy, and geometry; PDF/DOCX inputs carry only rasterized images. Need an architecture that admits new input types without forking the pipeline.
+
+**Decision:** Single polymorphic Agent 1 ("Source Adapter") with sub-implementations under `src/lib/agents/source-adapter/{pdf,docx,cad,...}.ts`. Output type generalizes to `ExtractedSource` with always-present `frames[]` + optional `structuredMetadata`. Adding a new input type (PPT, video walkthroughs, AR scans) is a localized change.
+
+**Rationale and alternatives considered:** see [ADR-0001](./adr/0001-source-adapter-pattern.md).
+
+### Decision 9: Polymorphic Illustration Renderer; CAD-render + overlays for CAD inputs
+
+**Context:** For PDF inputs, Agent 7 generates illustrations via Gemini Flash Image (~$0.04/step, the dominant per-job cost line). For CAD inputs, the actual model geometry is available, and generating illustrations from the CAD model directly is both cheaper and more credible to a manufacturing audience.
+
+**Decision:** Agent 7 renames to "Illustration Renderer" and dispatches on `structuredMetadata` presence. CAD inputs use three.js + headless-gl to render the Assembly per step, with programmatic SVG/canvas overlays for part labels, motion arrows, OK/NOK comparisons, and two-person grip indicators (driven by structured fields already on `EnforcedStep`). PDF/DOCX inputs continue to use Gemini Flash Image. Per-job cost for 3D inputs falls ~75%.
+
+**Rationale and alternatives considered:** see [ADR-0002](./adr/0002-polymorphic-illustration-agent.md).
+
+### Decision 10: Dispatch on `structuredMetadata` presence, not on input MIME type
+
+**Context:** Several agents need to behave differently for CAD-aware vs document-only inputs.
+
+**Decision:** Agents that adapt dispatch on the presence of `state.extractedSource.structuredMetadata`, not on input MIME type, file extension, or domain selection. This keeps the pipeline input-agnostic at its boundaries: any future input type that emits `structuredMetadata` automatically gets the CAD-class behavior; any input type that produces only `frames[]` automatically gets the document-class behavior.
+
+**Rationale:** see "Dispatch contract" section in [ADR-0002](./adr/0002-polymorphic-illustration-agent.md) and the equivalent entry in [`CONTEXT.md`](../CONTEXT.md).
 
 ---
 
