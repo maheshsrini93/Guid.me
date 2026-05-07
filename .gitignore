@@ -41,3 +41,4 @@ storage/
 
 # claude code (per-user settings)
 .claude/settings.local.json
+.claude/worktrees/
