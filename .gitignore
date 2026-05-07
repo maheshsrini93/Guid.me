@@ -36,7 +36,16 @@ yarn-error.log*
 next-env.d.ts
 
 # storage (uploads, generated files, database)
-storage/
+# storage/demo-assets/ is intentionally NOT ignored — it holds canonical
+# 3D demo assets that ship with the repo (Phase 6, T-094). Git's negation
+# rules can't re-include children of an ignored directory, so we list
+# subdirectories explicitly instead of ignoring `storage/` wholesale.
+storage/cache/
+storage/jobs/
+storage/uploads/
+storage/*.db
+storage/*.db-shm
+storage/*.db-wal
 *.db
 
 # claude code (per-user settings)

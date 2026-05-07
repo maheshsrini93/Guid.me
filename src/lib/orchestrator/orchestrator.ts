@@ -83,11 +83,15 @@ export async function runPipeline(
     const extractResult = await sourceAdapter.run(ctx1);
     state.extractedSource = extractResult.output;
 
-    // Update page count in DB
-    db.update(jobs)
-      .set({ pageCount: extractResult.output.documentMetadata.pageCount })
-      .where(eq(jobs.id, jobId))
-      .run();
+    // Update page count + CAD sequence provenance in DB
+    const jobUpdate: Partial<typeof jobs.$inferInsert> = {
+      pageCount: extractResult.output.documentMetadata.pageCount,
+    };
+    if (extractResult.output.structuredMetadata) {
+      jobUpdate.sequenceSource = extractResult.output.structuredMetadata.sequenceSource;
+      jobUpdate.sequenceConfidence = extractResult.output.structuredMetadata.sequenceConfidence;
+    }
+    db.update(jobs).set(jobUpdate).where(eq(jobs.id, jobId)).run();
 
     // ── Agent 2: Vision Analyzer ───────────────────────────
     checkCancellation(jobId, cancelledRef);
@@ -481,10 +485,14 @@ export async function resumePipeline(jobId: string): Promise<void> {
       const ctx1 = createAgentContext(jobId, state, cancelledRef);
       const extractResult = await sourceAdapter.run(ctx1);
       state.extractedSource = extractResult.output;
-      db.update(jobs)
-        .set({ pageCount: extractResult.output.documentMetadata.pageCount })
-        .where(eq(jobs.id, jobId))
-        .run();
+      const jobUpdate: Partial<typeof jobs.$inferInsert> = {
+        pageCount: extractResult.output.documentMetadata.pageCount,
+      };
+      if (extractResult.output.structuredMetadata) {
+        jobUpdate.sequenceSource = extractResult.output.structuredMetadata.sequenceSource;
+        jobUpdate.sequenceConfidence = extractResult.output.structuredMetadata.sequenceConfidence;
+      }
+      db.update(jobs).set(jobUpdate).where(eq(jobs.id, jobId)).run();
     }
 
     if (resumeFromIndex <= 1) {

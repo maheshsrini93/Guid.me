@@ -92,6 +92,9 @@ export async function GET(
         completedAt: job.completedAt,
         totalCostUsd: job.totalCostUsd,
         textRevisionCount: job.textRevisionCount,
+        sourceKind: job.sourceKind,
+        sequenceSource: job.sequenceSource,
+        sequenceConfidence: job.sequenceConfidence,
       },
       guide: {
         xmlContent: guide.xmlContent,

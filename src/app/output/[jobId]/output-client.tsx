@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Download, FileJson, Image as ImageIcon, LayoutList, ShieldCheck, DollarSign } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Download, FileJson, Image as ImageIcon, LayoutList, ShieldCheck, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/shared/header";
@@ -169,6 +169,26 @@ export function OutputPageClient({ jobId }: { jobId: string }) {
             <p className="mt-2 text-3xl font-bold text-emerald-600 dark:text-emerald-400">${(data.cost?.totalUsd ?? 0).toFixed(2)}</p>
           </div>
         </div>
+
+        {/* Geometry-inferred sequence advisory (CAD path without an explode video) */}
+        {data.job?.sequenceSource === "geometry-inferred" && (
+          <div
+            role="alert"
+            className="mb-6 flex items-start gap-3 border border-amber-500/50 bg-amber-500/10 p-4 text-sm"
+          >
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+            <div className="flex-1">
+              <p className="font-semibold text-amber-900 dark:text-amber-200">
+                Sequence inferred from geometry — confidence{" "}
+                {Math.round((data.job?.sequenceConfidence ?? 0) * 100)}%
+              </p>
+              <p className="mt-1 text-amber-800/90 dark:text-amber-200/80">
+                No explode-view video was provided, so the assembly order was inferred
+                from the STEP geometry. Verify against engineering intent before use.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="instruction" className="w-full">

@@ -8,6 +8,32 @@ Format: Each entry includes a date, category, and description of the change.
 
 ## 2026-05-07
 
+### Completed — Phase 6 output banner + demo asset scaffold + demo-mode 3D path (T-093, T-094, T-095)
+
+**Trigger:** Close out the Phase 6 surface area now that the CAD ingestion stack (T-076–T-082), Vision Analyzer polymorphism (T-083–T-084), Illustration Renderer polymorphism (T-085–T-089), and the user-visible upload path (T-090–T-092) are wired. The output page needed an advisory when the build sequence was inferred from geometry, the demo asset slot needed a canonical home, and the demo manager needed a CAD branch so `DEMO_MODE=true` exercises the 3D path end-to-end.
+
+**Tasks completed:** T-093, T-094, T-095.
+
+**Changes:**
+- `src/app/output/[jobId]/output-client.tsx` — Added a prominent amber advisory above the work-instruction tabs that renders when `data.job.sequenceSource === "geometry-inferred"`, surfacing the inferred-sequence confidence (`Math.round(sequenceConfidence × 100)%`) with copy directing the operator to verify against engineering intent before use. Banner is suppressed for the explode-video path (confidence 1.0) and for non-CAD jobs.
+- `src/app/api/jobs/[jobId]/result/route.ts` — Result API now surfaces `sourceKind`, `sequenceSource`, and `sequenceConfidence` on the `job` payload so the output banner has data to render.
+- `src/lib/orchestrator/orchestrator.ts` — After Agent 1 runs, the orchestrator persists `sequenceSource` + `sequenceConfidence` from `state.extractedSource.structuredMetadata` to the `jobs` row (both in the main pipeline and the resume path). Without this the banner could never fire on a real job.
+- `.gitignore` — Replaced the wholesale `storage/` ignore with explicit subdirectory ignores (`storage/cache/`, `storage/jobs/`, `storage/uploads/`, `storage/*.db*`) so `storage/demo-assets/` can travel with the repo. Git's negation rules can't re-include children of an ignored parent, so this is the only safe pattern.
+- `storage/demo-assets/v1-demo/README.md` — New canonical home for the hand-curated 3D demo asset (T-094). README documents the asset spec (10–15-part assembly, STEP AP242, mm units, stable component names), the explode-video spec (MP4 H.264, 1080p, motion-stall keyframes), the provenance/license table the author must fill in, and a status checklist. The actual `assembly.stp` + `explode.mp4` files require manual CAD authoring (Fusion 360 or FreeCAD) and are not yet committed — see the README's status section.
+- `src/lib/demo/demo-data-cad.ts` (new, ~580 lines) — Pre-cached pipeline outputs for a 5-step benchtop pulley assembly (11 components, parts catalog, assembly tree, sequenceSource `"explode-video"` at 1.0 confidence). Includes `DEMO_CAD_EXTRACTED_SOURCE`, `DEMO_CAD_FRAME_EXTRACTIONS` (5 keyframe-pair extractions), `DEMO_CAD_COMPOSED_GUIDE`, `DEMO_CAD_ENFORCED_GUIDE` (verb-first WI-022-compliant), `DEMO_CAD_QUALITY_REVIEW` (score 93), `DEMO_CAD_SAFETY_REVIEW`, `DEMO_CAD_XML_CONTENT`, and `DEMO_CAD_COST_RECORDS`. Per-agent costs reflect the CAD path: $0 for Source Adapter (code), $0 for Illustration Renderer (`internal-cad-renderer`), Flash Lite for Vision Analyzer/Composer/Enforcer (trimmed prompts), Pro for the reviewers. Total ≈ $0.21/job vs. $0.93 on the PDF path.
+- `src/lib/demo/demo-timing.ts` — Added `DEMO_AGENT_TIMING_CAD` table reflecting the CAD path's latency profile: longer Source Adapter (STEP parse + ffmpeg + three.js renders), faster Vision Analyzer (per-keyframe diffs vs. per-page extraction), much faster Illustration Renderer (no Gemini round-trips). `getAgentTiming(agent, kind)` now takes a path discriminator.
+- `src/lib/demo/demo-manager.ts` — Refactored to a cassette pattern: a `DemoCassette` interface bundles the cached outputs, per-agent progress messages, summaries, and illustration metadata for one path. `pdfCassette()` and `cadCassette()` build the two cassettes; `selectCassette(jobId)` reads `jobs.sourceKind` and dispatches. The simulator (`simulateAgent`, `recordDemoCost`, `persistGuide`, `buildDemoXmlWorkInstruction`) is shared. On completion the manager also writes `sourceKind`, `sequenceSource`, and `sequenceConfidence` for CAD jobs so the T-093 banner renders correctly in demo mode. PDF behavior is byte-equivalent — same SSE event sequence, same persisted rows.
+- `src/types/xml.ts` — Widened `XmlMetadata.sourceDocument.format` from `"pdf" | "docx"` to include `"step"` and `"step+explode-video"` so the CAD demo XML round-trips through the result API.
+
+**Why:**
+- The output banner (T-093) is the user-visible signal that a CAD job came through the geometry-inferred fallback rather than the authored explode-video path. Without it, a low-confidence sequence could be mistaken for ground truth.
+- T-094's scaffold + README is the contract for the eventual hand-authored asset — without it the asset has no canonical home and the demo manager has nothing concrete to point at.
+- T-095 makes `DEMO_MODE=true` exercise the entire 3D path: parts catalog grounding, $0 CAD illustration, sequence-source persistence, and the T-093 banner. Without it the demo would still fall through to the PDF path even when a STEP file is uploaded.
+
+**Caveats:**
+- The actual STEP and MP4 binaries for the demo asset (T-094) are not yet committed. They require manual CAD authoring; the README documents the spec and the status checklist tracks progress.
+- The CAD demo cached outputs in `demo-data-cad.ts` are representative placeholders. When the real binary asset lands they should be regenerated against the live pipeline so the cached data matches what the real Source Adapter / Vision Analyzer would produce.
+
 ### Completed — Phase 6 Composer grounding + multi-file API + STEP upload UI (T-090, T-091, T-092)
 
 **Trigger:** Wire the user-visible 3D path. T-090 makes Agent 3 honor the deterministic CAD parts catalog as ground truth; T-091 lets the API accept a STEP primary plus an optional explode-video auxiliary; T-092 surfaces both in the upload UI.

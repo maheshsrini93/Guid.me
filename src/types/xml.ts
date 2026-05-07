@@ -21,7 +21,7 @@ export interface XmlMetadata {
   purpose: string;
   sourceDocument: {
     filename: string;
-    format: "pdf" | "docx";
+    format: "pdf" | "docx" | "step" | "step+explode-video";
     pageCount: number;
   };
 }
