@@ -8,6 +8,48 @@ Format: Each entry includes a date, category, and description of the change.
 
 ## 2026-05-07
 
+### Completed — Phase 6 Foundation Slice (T-073 through T-077)
+
+**Trigger:** Implementation slice on `worktree-phase-6-3d-model-input` branch (commit `c085e9e`).
+
+**Tasks completed:** T-073, T-074, T-075, T-076, T-077.
+
+**Goal:** Establish the polymorphism scaffolding from [ADR-0001](./adr/0001-source-adapter-pattern.md) so CAD support (T-078+) can drop in without touching agents 2-8. No CAD code yet; PDF/DOCX flow preserved end-to-end.
+
+**Type system (T-073):**
+- Renamed `ExtractedDocument` → `ExtractedSource` with nested `documentMetadata: { filename, format, pageCount, doclingMarkdown, textContent }` and optional `structuredMetadata` field that agents 2/7 will dispatch on for CAD inputs.
+- Renamed `ExtractedPage` → `Frame` (with `frameNumber`), `RawPageExtraction` → `RawFrameExtraction`, `PipelineState.pageExtractions` → `frameExtractions`, `DocumentExtractorInput` → `SourceAdapterInput`.
+- Added `AssemblyNode`, `StructuredMetadata`, and CAD-only optional fields on `StructuredPartRef` (`parentAssemblyPath`, `mass`, `material`, `boundingBox`).
+
+**DB schema (T-074):**
+- Added 5 nullable columns to `jobs`: `source_kind` (enum, defaults `pdf`), `auxiliary_path`, `auxiliary_mime_type`, `sequence_source`, `sequence_confidence`. Applied via `pnpm db:push`.
+
+**Storage helpers (T-075):**
+- Added `getSourceDir(jobId)`, `getPrimarySourcePath(jobId, ext)`, `getAuxiliarySourcePath(jobId, ext)` for the new `storage/jobs/{jobId}/source/{primary,auxiliary}` layout (existing helpers preserved).
+
+**Source Adapter restructure (T-076 / T-077):**
+- Moved `src/lib/agents/document-extractor.ts` → `src/lib/agents/source-adapter/`. Now a directory with:
+  - `index.ts` — `SourceAdapter` (extends `BaseCodeAgent`) walking a registered `IMPLS: SourceAdapterImpl[]` array.
+  - `types.ts` — `SourceAdapterImpl` interface (`name`, `canHandle`, `extract`).
+  - `pdf.ts` — `pdfImpl` (Docling-first with pdftoppm fallback).
+  - `docx.ts` — `docxImpl` (Docling-first with mammoth fallback).
+  - `shared.ts` — `runDocling()`, `isDoclingAvailable()`, `getImageDimensions()`.
+- Renamed agent everywhere: `AgentName` union (backend + frontend duplicate in `use-event-source.ts`), `STATUS_TO_AGENT`, orchestrator `AGENT_ORDER`, SSE route, agent-card config, demo timing/cost records, display name → "Source Adapter".
+- Resume/retry tolerates legacy `agent_executions.agent_name = 'document-extractor'` rows via a `canonicalizeAgentName()` alias on the read boundary in `resumePipeline()`. No DB rewrite.
+
+**Out of scope (deferred):** Upload UI/API multi-file (T-091/T-092), CAD libraries — `occt-import-js`, `three.js`, `headless-gl`, `ffmpeg` (T-078+), Vision Analyzer / Illustration Renderer dispatchers (T-083, T-085), Composer grounding (T-090), full doc sweep (T-100).
+
+**Verification:**
+- `pnpm exec tsc --noEmit` and `pnpm build` clean.
+- Demo pipeline runs end-to-end, all 8 agents complete, quality score 91/100.
+- Pipeline UI shows first agent labelled "Source Adapter".
+- XML output renders with populated `<source-document>` block (`filename`, `format=pdf`, `pageCount=4`).
+- DB `jobs` row has the 5 new columns (`source_kind=pdf` for new rows); `agent_executions.agent_name` records as `source-adapter`.
+
+**Stats:** 27 files changed, +713 / −500 lines. 5 new files (`source-adapter/{index,types,pdf,docx,shared}.ts`); 1 deleted (`document-extractor.ts`).
+
+---
+
 ### Planned — Phase 6: 3D Model Input (T-073 through T-100, planning artifacts only)
 
 **Trigger:** `/grill-with-docs` design session on `feat/3d-model-input` branch.

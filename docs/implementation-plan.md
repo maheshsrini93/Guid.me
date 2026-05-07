@@ -1,7 +1,7 @@
 # Guid -- Implementation Plan
 
-> **Last Updated:** 2026-05-07 (Phase 6 added: 3D Model Input)
-> **Status:** Active -- Phases 0-5 completed; Phase 6 in progress on `feat/3d-model-input`
+> **Last Updated:** 2026-05-07 (Phase 6 foundation slice landed: T-073 through T-077)
+> **Status:** Active -- Phases 0-5 completed; Phase 6 foundation slice complete on `worktree-phase-6-3d-model-input` (CAD ingestion next)
 > **Authoritative Spec:** [`docs/prd.md`](./prd.md)
 > **Architecture decisions:** [`docs/adr/`](./adr/)
 > **Domain glossary:** [`CONTEXT.md`](../CONTEXT.md)
@@ -475,6 +475,8 @@ Goal: Production-quality demo experience, pre-cached fallback mode, rehearsed 5-
 | 5.7 | Performance optimization (SSE reconnection, image lazy loading) | various |
 
 ### Phase 6: 3D Model Input -- IN PROGRESS
+
+> **Foundation slice landed (T-073 through T-077):** Type system generalized to `ExtractedSource { frames, documentMetadata, structuredMetadata? }`; `jobs` table extended with `sourceKind` / `auxiliaryPath` / `sequenceSource` / `sequenceConfidence` columns; `DocumentExtractor` renamed to `SourceAdapter` and split into a dispatcher with PDF/DOCX sub-implementations under `src/lib/agents/source-adapter/`. PDF/DOCX upload flow unchanged. Polymorphism scaffolding ready for CAD sub-implementation (T-078+).
 
 Goal: Accept STEP (CAD assembly) files as a third input type alongside PDF/DOCX. Pipeline becomes input-agnostic; agents 1, 2, and 7 become polymorphic. Per-job cost for 3D inputs drops to ~$0.23 (75% reduction vs PDF). Architecture decisions captured in [ADR-0001](./adr/0001-source-adapter-pattern.md) and [ADR-0002](./adr/0002-polymorphic-illustration-agent.md).
 
