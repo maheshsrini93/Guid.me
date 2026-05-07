@@ -1,6 +1,6 @@
 import type {
-  ExtractedDocument,
-  RawPageExtraction,
+  ExtractedSource,
+  RawFrameExtraction,
   ComposedGuide,
   EnforcedGuide,
   QualityReviewResult,
@@ -44,8 +44,8 @@ export interface PipelineState {
   documentMimeType: string;
 
   // --- Agent Outputs (populated as pipeline progresses) ---
-  extractedDocument?: ExtractedDocument;
-  pageExtractions?: RawPageExtraction[];
+  extractedSource?: ExtractedSource;
+  frameExtractions?: RawFrameExtraction[];
   composedGuide?: ComposedGuide;
   enforcedGuide?: EnforcedGuide;
   qualityReview?: QualityReviewResult;

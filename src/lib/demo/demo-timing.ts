@@ -16,7 +16,7 @@ interface AgentTiming {
 }
 
 export const DEMO_AGENT_TIMING: Record<string, AgentTiming> = {
-  "document-extractor": { startDelayMs: 300, durationMs: 1200, progressSteps: 3 },
+  "source-adapter": { startDelayMs: 300, durationMs: 1200, progressSteps: 3 },
   "vision-analyzer": { startDelayMs: 200, durationMs: 8000, progressSteps: 4 },
   "instruction-composer": { startDelayMs: 200, durationMs: 3000, progressSteps: 3 },
   "guideline-enforcer": { startDelayMs: 200, durationMs: 4000, progressSteps: 3 },

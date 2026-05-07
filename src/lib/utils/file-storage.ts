@@ -43,6 +43,25 @@ export function getOutputPath(jobId: string): string {
   return path.join(base(), "jobs", jobId, "output.xml");
 }
 
+// ============================================================
+// Phase 6: Source Adapter storage layout
+// storage/jobs/{jobId}/source/{primary.{ext}, auxiliary.{ext}}
+// ============================================================
+
+export function getSourceDir(jobId: string): string {
+  return path.join(base(), "jobs", jobId, "source");
+}
+
+export function getPrimarySourcePath(jobId: string, ext: string): string {
+  const cleanExt = ext.startsWith(".") ? ext.slice(1) : ext;
+  return path.join(getSourceDir(jobId), `primary.${cleanExt}`);
+}
+
+export function getAuxiliarySourcePath(jobId: string, ext: string): string {
+  const cleanExt = ext.startsWith(".") ? ext.slice(1) : ext;
+  return path.join(getSourceDir(jobId), `auxiliary.${cleanExt}`);
+}
+
 /** Write data to a file, creating parent directories as needed */
 export async function saveFile(
   filePath: string,

@@ -42,8 +42,28 @@ export const jobs = sqliteTable("jobs", {
   fileSize: integer("file_size").notNull(),
   /** Path to uploaded file */
   filePath: text("file_path").notNull(),
-  /** Number of pages in the document */
+  /** Number of pages in the document (or frames for CAD inputs) */
   pageCount: integer("page_count"),
+
+  // --- Phase 6: Source Adapter ---
+  /**
+   * Source kind. Determines which Source Adapter sub-implementation runs.
+   * "pdf" / "docx" use Agents 2 & 7 in document mode; "step" / "step+explode-video"
+   * activate the CAD path in those agents (T-082+, not yet wired).
+   */
+  sourceKind: text("source_kind", {
+    enum: ["pdf", "docx", "step", "step+explode-video"],
+  }).default("pdf"),
+  /** Optional auxiliary file (e.g., explode-view MP4 for STEP inputs) */
+  auxiliaryPath: text("auxiliary_path"),
+  /** MIME type of the auxiliary file */
+  auxiliaryMimeType: text("auxiliary_mime_type"),
+  /** How the build sequence was determined for CAD inputs (null for non-CAD) */
+  sequenceSource: text("sequence_source", {
+    enum: ["explode-video", "geometry-inferred"],
+  }),
+  /** Confidence in the inferred build sequence (0-1, CAD only) */
+  sequenceConfidence: real("sequence_confidence"),
 
   // --- Configuration ---
   /** Display name for the guide */

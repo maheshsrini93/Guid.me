@@ -5,7 +5,7 @@ import { useEffect, useReducer, useRef } from "react";
 export type PipelineStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
 
 export type AgentName =
-  | "document-extractor"
+  | "source-adapter"
   | "vision-analyzer"
   | "instruction-composer"
   | "guideline-enforcer"
@@ -53,7 +53,7 @@ type Action =
   | { type: "PIPELINE_COMPLETE"; payload: { state: "completed"; qualityScore: number; qualityDecision: string; totalCostUsd: number; durationMs: number } };
 
 const initialAgents: Record<AgentName, AgentState> = {
-  "document-extractor": { name: "document-extractor", displayName: "Document Extractor", status: "idle", progress: 0, message: "Waiting to start" },
+  "source-adapter": { name: "source-adapter", displayName: "Source Adapter", status: "idle", progress: 0, message: "Waiting to start" },
   "vision-analyzer": { name: "vision-analyzer", displayName: "Vision Analyzer", status: "idle", progress: 0, message: "Waiting to start" },
   "instruction-composer": { name: "instruction-composer", displayName: "Instruction Composer", status: "idle", progress: 0, message: "Waiting to start" },
   "guideline-enforcer": { name: "guideline-enforcer", displayName: "Guideline Enforcer", status: "idle", progress: 0, message: "Waiting to start" },

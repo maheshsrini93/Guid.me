@@ -1,8 +1,8 @@
 // ============================================================
-// Agent 1: Document Extractor
+// Agent 1: Source Adapter
 // ============================================================
 
-export interface DocumentExtractorInput {
+export interface SourceAdapterInput {
   /** Path to the uploaded file on local storage */
   filePath: string;
   /** MIME type of the uploaded file */
@@ -13,33 +13,79 @@ export interface DocumentExtractorInput {
   jobId: string;
 }
 
-export interface ExtractedDocument {
-  /** Original filename */
-  filename: string;
-  /** Document format */
-  format: "pdf" | "docx";
-  /** Total number of pages/sections */
-  pageCount: number;
-  /** Extracted pages with image paths */
-  pages: ExtractedPage[];
-  /** Raw text content (if available from DOCX) */
-  textContent?: string;
-  /** Full-document Markdown from Docling (cross-page context for Vision Analyzer) */
-  doclingMarkdown?: string;
+/**
+ * The unified output of Agent 1 across input types.
+ *
+ * - `frames`: ordered images consumed by Agent 2 (PDF/DOCX pages, CAD keyframes, multi-view renders).
+ * - `documentMetadata`: filename, format, page count — properties of the source file itself.
+ * - `structuredMetadata`: present only for CAD-aware sources. Agents 2 and 7 dispatch on its presence.
+ *   See ADR-0001 (source-adapter pattern) and ADR-0002 (polymorphic illustration agent).
+ */
+export interface ExtractedSource {
+  /** Ordered frames extracted from the source (pages for PDF/DOCX, keyframes/views for CAD) */
+  frames: Frame[];
+  /** Document-level metadata (filename, format, page count, extracted text, Docling markdown) */
+  documentMetadata: DocumentMetadata;
+  /** Present only for CAD-aware sources. Agents 2/7 use its presence as the dispatch signal. */
+  structuredMetadata?: StructuredMetadata;
   /** Extraction timing */
   durationMs: number;
 }
 
-export interface ExtractedPage {
-  /** Page number (1-indexed) */
-  pageNumber: number;
-  /** Path to the extracted page image */
+export interface Frame {
+  /** Frame number (1-indexed). For PDF/DOCX this is the page number. */
+  frameNumber: number;
+  /** Path to the extracted frame image */
   imagePath: string;
   /** Image dimensions */
   width: number;
   height: number;
   /** MIME type of the extracted image */
   mimeType: "image/png" | "image/jpeg";
+}
+
+export interface DocumentMetadata {
+  /** Original filename */
+  filename: string;
+  /** Document format */
+  format: "pdf" | "docx" | "step" | "step+explode-video";
+  /** Total number of pages/sections (for paged sources) or frames (for CAD) */
+  pageCount: number;
+  /** Raw text content (if available from DOCX) */
+  textContent?: string;
+  /** Full-document Markdown from Docling (cross-page context for Vision Analyzer) */
+  doclingMarkdown?: string;
+}
+
+/**
+ * Hierarchical assembly tree for CAD inputs.
+ * Each node represents an Assembly (with children) or a Component (leaf).
+ */
+export interface AssemblyNode {
+  /** Stable identifier for this node within the assembly */
+  id: string;
+  /** Human-readable name (often pulled from the STEP product definition) */
+  name: string;
+  /** Child sub-assemblies and components. Empty for leaves. */
+  children: AssemblyNode[];
+}
+
+/**
+ * CAD-aware metadata produced by the CAD source-adapter sub-implementation.
+ * Agents 2, 3, and 7 use this to ground their output in the parts catalog and
+ * the inferred (or explicit) build sequence.
+ */
+export interface StructuredMetadata {
+  /** All Components in the Assembly, with stable IDs and physical properties */
+  partsCatalog: StructuredPartRef[];
+  /** Hierarchical Assembly tree */
+  assemblyTree: AssemblyNode;
+  /** Source format that produced this metadata */
+  sourceFormat: "step" | "step+explode-video";
+  /** How the build sequence was determined */
+  sequenceSource: "explode-video" | "geometry-inferred";
+  /** Confidence in the inferred sequence (0-1). 1 for explode-video; lower for geometry-inferred. */
+  sequenceConfidence: number;
 }
 
 // ============================================================
@@ -59,12 +105,12 @@ export interface VisionAnalyzerInput {
   guidelines?: string;
 }
 
-export interface RawPageExtraction {
-  /** Page classification */
+export interface RawFrameExtraction {
+  /** Frame classification */
   pageType?: "cover" | "safety" | "parts_inventory" | "assembly" | "completion";
-  /** Extracted steps from this page */
+  /** Extracted steps from this frame */
   steps: RawStepExtraction[];
-  /** Page-level indicators for escalation decisions */
+  /** Frame-level indicators for escalation decisions */
   pageIndicators: {
     arrowCount: number;
     hasHingeOrRotation: boolean;
@@ -178,8 +224,8 @@ export interface FastenerDetail {
 // ============================================================
 
 export interface InstructionComposerInput {
-  /** All page extractions, in page order */
-  pageExtractions: RawPageExtraction[];
+  /** All frame extractions, in source order */
+  frameExtractions: RawFrameExtraction[];
   /** Document metadata */
   documentMetadata: {
     title?: string;
@@ -378,6 +424,17 @@ export interface StructuredPartRef {
   id: string;
   /** Quantity used in this step */
   quantity: number;
+  /** CAD-only: dotted path to this part within the assembly tree (e.g., "frame/leg-assembly/leg-A") */
+  parentAssemblyPath?: string;
+  /** CAD-only: mass in kilograms */
+  mass?: number;
+  /** CAD-only: material designation (e.g., "Steel - AISI 1018") */
+  material?: string;
+  /** CAD-only: axis-aligned bounding box in model coordinates */
+  boundingBox?: {
+    min: [number, number, number];
+    max: [number, number, number];
+  };
 }
 
 export type SafetySeverity = "notice" | "caution" | "warning" | "danger";
@@ -478,8 +535,8 @@ export interface EnforcementSummary {
 export interface QualityReviewerInput {
   /** The enforced guide from Agent 4 */
   enforcedGuide: EnforcedGuide;
-  /** Original page extractions for cross-verification */
-  originalExtractions: RawPageExtraction[];
+  /** Original frame extractions for cross-verification */
+  originalExtractions: RawFrameExtraction[];
   /** Full guidelines YAML for scoring reference */
   guidelinesYaml: string;
 }
@@ -531,8 +588,8 @@ export type QualityCategory =
 export interface SafetyReviewerInput {
   /** The enforced guide from Agent 4 */
   enforcedGuide: EnforcedGuide;
-  /** Original page extractions for hazard cross-check */
-  originalExtractions: RawPageExtraction[];
+  /** Original frame extractions for hazard cross-check */
+  originalExtractions: RawFrameExtraction[];
 }
 
 export interface SafetyReviewResult {

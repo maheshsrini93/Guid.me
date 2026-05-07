@@ -7,7 +7,7 @@ import type { AgentContext, AgentExecutionRecord, AgentName } from "./types";
 
 /** Map pipeline status to agent name for progress reporting */
 const STATUS_TO_AGENT: Record<string, AgentName> = {
-  extracting: "document-extractor",
+  extracting: "source-adapter",
   analyzing: "vision-analyzer",
   composing: "instruction-composer",
   enforcing: "guideline-enforcer",

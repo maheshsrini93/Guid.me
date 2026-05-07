@@ -277,32 +277,32 @@ async function runPerPage<TOutput>(
   context: AgentContext,
   onPageTokens: (tokens: PageTokens) => void,
 ): Promise<TOutput> {
-  const pages = context.pipelineState.extractedDocument?.pages;
-  if (!pages || pages.length === 0) {
-    throw new Error("No extracted pages available for per-page processing");
+  const frames = context.pipelineState.extractedSource?.frames;
+  if (!frames || frames.length === 0) {
+    throw new Error("No extracted frames available for per-page processing");
   }
 
   const systemPrompt = config.buildSystemPrompt();
   const pageResults: unknown[] = [];
   let previousStepSummary = "";
 
-  for (let i = 0; i < pages.length; i++) {
+  for (let i = 0; i < frames.length; i++) {
     if (context.isCancelled()) {
       throw new PipelineCancelledError(context.jobId);
     }
 
-    const page = pages[i];
-    const progress = Math.round(((i + 1) / pages.length) * 100);
-    context.reportProgress(progress, `Analyzing page ${i + 1} of ${pages.length}`);
+    const frame = frames[i];
+    const progress = Math.round(((i + 1) / frames.length) * 100);
+    context.reportProgress(progress, `Analyzing page ${i + 1} of ${frames.length}`);
 
     const userPrompt = config.buildUserPrompt(context.pipelineState, {
-      pageNumber: page.pageNumber,
-      totalPages: pages.length,
+      pageNumber: frame.frameNumber,
+      totalPages: frames.length,
       previousStepSummary,
     });
 
-    // Read the page image
-    const imageData = await readFile(page.imagePath);
+    // Read the frame image
+    const imageData = await readFile(frame.imagePath);
 
     // Call Gemini Vision with retry
     const result = await withRetry(
@@ -313,7 +313,7 @@ async function runPerPage<TOutput>(
           config.defaultModel,
           systemPrompt,
           userPrompt,
-          { data: imageData, mimeType: page.mimeType },
+          { data: imageData, mimeType: frame.mimeType },
           config.responseSchema,
           config.generationOptions,
         ) as Promise<StructuredGenerationResult<unknown>>;
@@ -351,7 +351,7 @@ async function runPerPage<TOutput>(
               config.escalationModel!,
               systemPrompt,
               userPrompt,
-              { data: imageData, mimeType: page.mimeType },
+              { data: imageData, mimeType: frame.mimeType },
               config.responseSchema,
               config.generationOptions,
             ) as Promise<StructuredGenerationResult<unknown>>;

@@ -5,7 +5,7 @@ import { PipelineCancelledError } from "./types";
 
 /**
  * Abstract base class for code-only agents (no LLM calls).
- * Used by Agent 1 (Document Extractor) and Agent 8 (XML Assembler).
+ * Used by Agent 1 (Source Adapter) and Agent 8 (XML Assembler).
  */
 export abstract class BaseCodeAgent<TInput, TOutput> {
   abstract name: AgentName;

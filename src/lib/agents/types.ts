@@ -7,7 +7,7 @@ import type { PipelineState, AgentCostRecord } from "@/types/pipeline";
 // ============================================================
 
 export type AgentName =
-  | "document-extractor"
+  | "source-adapter"
   | "vision-analyzer"
   | "instruction-composer"
   | "guideline-enforcer"

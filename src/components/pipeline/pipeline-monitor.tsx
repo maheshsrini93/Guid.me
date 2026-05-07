@@ -13,7 +13,7 @@ import { CostTicker } from "./cost-ticker";
 import { DetailDrawer } from "./detail-drawer";
 
 const AGENT_ORDER: AgentName[] = [
-  "document-extractor",
+  "source-adapter",
   "vision-analyzer",
   "instruction-composer",
   "guideline-enforcer",

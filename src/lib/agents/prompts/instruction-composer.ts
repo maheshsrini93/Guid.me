@@ -30,8 +30,8 @@ Given raw extractions from each page of an assembly document, produce:
 }
 
 export function buildInstructionComposerUserPrompt(state: PipelineState): string {
-  const extractions = state.pageExtractions;
-  const doc = state.extractedDocument;
+  const extractions = state.frameExtractions;
+  const doc = state.extractedSource?.documentMetadata;
 
   return `Transform these raw page extractions into a structured assembly guide.
 

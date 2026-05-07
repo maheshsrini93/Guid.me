@@ -56,7 +56,7 @@ class XmlAssemblerAgent extends BaseCodeAgent<XmlAssemblerInput, XmlAssemblerOut
     const guide = state.enforcedGuide!;
     const qualityReview = state.qualityReview!;
     const safetyReview = state.safetyReview!;
-    const doc = state.extractedDocument;
+    const doc = state.extractedSource?.documentMetadata;
 
     context.reportProgress(10, "Collecting pipeline outputs");
 
@@ -103,7 +103,7 @@ function assembleWorkInstruction(
   guide: EnforcedGuide,
   state: PipelineState,
 ): XmlWorkInstruction {
-  const doc = state.extractedDocument;
+  const doc = state.extractedSource?.documentMetadata;
   const qualityReview = state.qualityReview!;
   const safetyReview = state.safetyReview!;
 

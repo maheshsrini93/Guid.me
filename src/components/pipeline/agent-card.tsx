@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 const AGENT_CONFIG: Record<AgentName, { icon: React.ElementType; color: string; bg: string }> = {
-  "document-extractor": { icon: FileText, color: "text-slate-500", bg: "bg-slate-500/10" },
+  "source-adapter": { icon: FileText, color: "text-slate-500", bg: "bg-slate-500/10" },
   "vision-analyzer": { icon: Eye, color: "text-blue-500", bg: "bg-blue-500/10" },
   "instruction-composer": { icon: Pen, color: "text-violet-500", bg: "bg-violet-500/10" },
   "guideline-enforcer": { icon: Shield, color: "text-indigo-500", bg: "bg-indigo-500/10" },

@@ -43,7 +43,7 @@ export function buildVisionAnalyzerUserPrompt(
   const pageNum = ctx?.pageNumber ?? 1;
   const totalPages = ctx?.totalPages ?? 1;
 
-  const productName = state.extractedDocument?.filename
+  const productName = state.extractedSource?.documentMetadata.filename
     ?.replace(/\.[^.]+$/, "")
     ?.replace(/[-_]/g, " ")
     ?? "Unknown product";
@@ -90,7 +90,7 @@ export function buildVisionAnalyzerUserPrompt(
 }
 \`\`\``;
 
-  const markdown = state.extractedDocument?.doclingMarkdown;
+  const markdown = state.extractedSource?.documentMetadata.doclingMarkdown;
   if (markdown) {
     const maxChars = 30_000;
     const truncated = markdown.length > maxChars

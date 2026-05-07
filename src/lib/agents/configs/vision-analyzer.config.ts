@@ -1,5 +1,5 @@
 import { FLASH_MODEL, PRO_MODEL } from "@/lib/gemini/models";
-import type { RawPageExtraction } from "@/types/agents";
+import type { RawFrameExtraction } from "@/types/agents";
 import { AgentValidationError, type AgentConfig } from "../types";
 import { visionAnalyzerSchema } from "../schemas/vision-analyzer.schema";
 import {
@@ -8,7 +8,7 @@ import {
   buildVisionAnalyzerUserPrompt,
 } from "../prompts/vision-analyzer";
 
-export const visionAnalyzerConfig: AgentConfig<RawPageExtraction[]> = {
+export const visionAnalyzerConfig: AgentConfig<RawFrameExtraction[]> = {
   name: "vision-analyzer",
   displayName: "Vision Analyzer",
   executionOrder: 2,
@@ -63,16 +63,16 @@ export const visionAnalyzerConfig: AgentConfig<RawPageExtraction[]> = {
   buildUserPrompt: buildVisionAnalyzerUserPrompt,
 
   validateInput(state) {
-    if (!state.extractedDocument) {
+    if (!state.extractedSource) {
       throw new AgentValidationError(
         "vision-analyzer",
-        "No extracted document available. Document Extractor must run first.",
+        "No extracted source available. Source Adapter must run first.",
       );
     }
-    if (!state.extractedDocument.pages.length) {
+    if (!state.extractedSource.frames.length) {
       throw new AgentValidationError(
         "vision-analyzer",
-        "Extracted document has no pages.",
+        "Extracted source has no frames.",
       );
     }
   },
@@ -80,10 +80,10 @@ export const visionAnalyzerConfig: AgentConfig<RawPageExtraction[]> = {
   parseOutput(raw) {
     // In per-page mode, raw is an array of per-page results
     if (Array.isArray(raw)) {
-      return raw as RawPageExtraction[];
+      return raw as RawFrameExtraction[];
     }
     // Single page result — wrap in array
-    return [raw as RawPageExtraction];
+    return [raw as RawFrameExtraction];
   },
 
   summarize(output) {

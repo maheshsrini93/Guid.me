@@ -4,8 +4,8 @@
  */
 
 import type {
-  ExtractedDocument,
-  RawPageExtraction,
+  ExtractedSource,
+  RawFrameExtraction,
   ComposedGuide,
   EnforcedGuide,
   QualityReviewResult,
@@ -13,20 +13,21 @@ import type {
 } from "@/types/agents";
 
 // ============================================================
-// Agent 1: Document Extractor (code)
+// Agent 1: Source Adapter (code)
 // ============================================================
 
-export const DEMO_EXTRACTED_DOCUMENT: ExtractedDocument = {
-  filename: "BJÖRKUDDEN-bookshelf-assembly.pdf",
-  format: "pdf",
-  pageCount: 4,
-  pages: [
-    { pageNumber: 1, imagePath: "demo/page-001.png", width: 595, height: 842, mimeType: "image/png" },
-    { pageNumber: 2, imagePath: "demo/page-002.png", width: 595, height: 842, mimeType: "image/png" },
-    { pageNumber: 3, imagePath: "demo/page-003.png", width: 595, height: 842, mimeType: "image/png" },
-    { pageNumber: 4, imagePath: "demo/page-004.png", width: 595, height: 842, mimeType: "image/png" },
+export const DEMO_EXTRACTED_SOURCE: ExtractedSource = {
+  frames: [
+    { frameNumber: 1, imagePath: "demo/page-001.png", width: 595, height: 842, mimeType: "image/png" },
+    { frameNumber: 2, imagePath: "demo/page-002.png", width: 595, height: 842, mimeType: "image/png" },
+    { frameNumber: 3, imagePath: "demo/page-003.png", width: 595, height: 842, mimeType: "image/png" },
+    { frameNumber: 4, imagePath: "demo/page-004.png", width: 595, height: 842, mimeType: "image/png" },
   ],
-  doclingMarkdown: `# BJÖRKUDDEN Bookshelf Assembly
+  documentMetadata: {
+    filename: "BJÖRKUDDEN-bookshelf-assembly.pdf",
+    format: "pdf",
+    pageCount: 4,
+    doclingMarkdown: `# BJÖRKUDDEN Bookshelf Assembly
 
 ## Parts List
 | Part | Name | Qty |
@@ -56,6 +57,7 @@ Step 5: Attach back panel (E) using nails. Place assembly face-down.
 ## Page 4 — Step 6: Wall Anchoring
 Step 6: Secure bookshelf to wall using wall anchor kit (100001). Two-person step.
 `,
+  },
   durationMs: 1200,
 };
 
@@ -63,7 +65,7 @@ Step 6: Secure bookshelf to wall using wall anchor kit (100001). Two-person step
 // Agent 2: Vision Analyzer
 // ============================================================
 
-export const DEMO_PAGE_EXTRACTIONS: RawPageExtraction[] = [
+export const DEMO_FRAME_EXTRACTIONS: RawFrameExtraction[] = [
   {
     pageType: "parts_inventory",
     steps: [{
@@ -775,7 +777,7 @@ export const DEMO_XML_CONTENT = `<?xml version="1.0" encoding="UTF-8"?>
 // ============================================================
 
 export const DEMO_COST_RECORDS = [
-  { agent: "document-extractor", model: "code", costUsd: 0, inputTokens: 0, outputTokens: 0 },
+  { agent: "source-adapter", model: "code", costUsd: 0, inputTokens: 0, outputTokens: 0 },
   { agent: "vision-analyzer", model: "gemini-3.1-pro-preview", costUsd: 0.06, inputTokens: 28000, outputTokens: 4200 },
   { agent: "instruction-composer", model: "gemini-3.1-pro-preview", costUsd: 0.02, inputTokens: 8500, outputTokens: 3100 },
   { agent: "guideline-enforcer", model: "gemini-3.1-flash-lite-preview", costUsd: 0.03, inputTokens: 12000, outputTokens: 4800 },

@@ -91,7 +91,7 @@ export async function GET(
 
   // Emit agent:start for the currently running agent (so it shows as active)
   const STATUS_TO_AGENT: Record<string, string> = {
-    extracting: "document-extractor",
+    extracting: "source-adapter",
     analyzing: "vision-analyzer",
     composing: "instruction-composer",
     enforcing: "guideline-enforcer",

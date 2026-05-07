@@ -4,7 +4,7 @@ import { jobs, agentExecutions, generatedGuides, generatedIllustrations } from "
 import { generateId } from "@/lib/utils/ulid";
 import type { PipelineState, PipelineStatus } from "@/types/pipeline";
 import { createAgentContext } from "@/lib/agents/context";
-import { documentExtractor } from "@/lib/agents/document-extractor";
+import { sourceAdapter } from "@/lib/agents/source-adapter";
 import { xmlAssembler } from "@/lib/agents/xml-assembler";
 import { illustrationGenerator } from "@/lib/agents/illustration-generator";
 import { runConfigAgent } from "@/lib/agents/runner";
@@ -69,16 +69,16 @@ export async function runPipeline(
   };
 
   try {
-    // ── Agent 1: Document Extractor ────────────────────────
+    // ── Agent 1: Source Adapter ────────────────────────────
     checkCancellation(jobId, cancelledRef);
     await updateStatus(jobId, "extracting", state);
     const ctx1 = createAgentContext(jobId, state, cancelledRef);
-    const extractResult = await documentExtractor.run(ctx1);
-    state.extractedDocument = extractResult.output;
+    const extractResult = await sourceAdapter.run(ctx1);
+    state.extractedSource = extractResult.output;
 
     // Update page count in DB
     db.update(jobs)
-      .set({ pageCount: extractResult.output.pageCount })
+      .set({ pageCount: extractResult.output.documentMetadata.pageCount })
       .where(eq(jobs.id, jobId))
       .run();
 
@@ -87,7 +87,7 @@ export async function runPipeline(
     await updateStatus(jobId, "analyzing", state);
     const ctx2 = createAgentContext(jobId, state, cancelledRef);
     const visionResult = await runConfigAgent(visionAnalyzerConfig, ctx2);
-    state.pageExtractions = visionResult.output;
+    state.frameExtractions = visionResult.output;
 
     // ── Agent 3: Instruction Composer ──────────────────────
     checkCancellation(jobId, cancelledRef);
@@ -302,7 +302,7 @@ export async function runPipeline(
  * Maps agent names to the pipeline stages they produce output for.
  */
 const AGENT_ORDER: AgentName[] = [
-  "document-extractor",
+  "source-adapter",
   "vision-analyzer",
   "instruction-composer",
   "guideline-enforcer",
@@ -311,6 +311,14 @@ const AGENT_ORDER: AgentName[] = [
   "illustration-generator",
   "xml-assembler",
 ];
+
+/**
+ * Backward-compatible alias for agent_executions rows written before the
+ * Phase 6 rename. Read-only — new rows are always written as "source-adapter".
+ */
+function canonicalizeAgentName(name: string): string {
+  return name === "document-extractor" ? "source-adapter" : name;
+}
 
 /**
  * Resume a failed pipeline from the last successful agent.
@@ -339,13 +347,15 @@ export async function resumePipeline(jobId: string): Promise<void> {
     .orderBy(asc(agentExecutions.executionOrder))
     .all();
 
-  // Build set of completed agent names (use latest execution per agent)
+  // Build set of completed agent names (use latest execution per agent).
+  // Canonicalize to handle legacy "document-extractor" rows from before the rename.
   const completedAgents = new Set<string>();
   const agentOutputs = new Map<string, string>();
   for (const exec of completedExecs) {
-    completedAgents.add(exec.agentName);
+    const canonical = canonicalizeAgentName(exec.agentName);
+    completedAgents.add(canonical);
     if (exec.structuredOutput) {
-      agentOutputs.set(exec.agentName, exec.structuredOutput);
+      agentOutputs.set(canonical, exec.structuredOutput);
     }
   }
 
@@ -363,11 +373,11 @@ export async function resumePipeline(jobId: string): Promise<void> {
   };
 
   // Restore outputs from completed agents
-  if (completedAgents.has("document-extractor") && agentOutputs.has("document-extractor")) {
-    state.extractedDocument = JSON.parse(agentOutputs.get("document-extractor")!);
+  if (completedAgents.has("source-adapter") && agentOutputs.has("source-adapter")) {
+    state.extractedSource = JSON.parse(agentOutputs.get("source-adapter")!);
   }
   if (completedAgents.has("vision-analyzer") && agentOutputs.has("vision-analyzer")) {
-    state.pageExtractions = JSON.parse(agentOutputs.get("vision-analyzer")!);
+    state.frameExtractions = JSON.parse(agentOutputs.get("vision-analyzer")!);
   }
   if (completedAgents.has("instruction-composer") && agentOutputs.has("instruction-composer")) {
     state.composedGuide = JSON.parse(agentOutputs.get("instruction-composer")!);
@@ -424,16 +434,17 @@ export async function resumePipeline(jobId: string): Promise<void> {
 
   // Emit SSE events for already-completed agents so the UI shows them as done
   for (const exec of completedExecs) {
+    const canonical = canonicalizeAgentName(exec.agentName);
     // Only emit for agents before the resume point
-    if (!completedAgents.has(exec.agentName) || AGENT_ORDER.indexOf(exec.agentName as AgentName) >= resumeFromIndex) {
+    if (!completedAgents.has(canonical) || AGENT_ORDER.indexOf(canonical as AgentName) >= resumeFromIndex) {
       continue;
     }
     pipelineEvents.emit(jobId, "agent:start", {
-      agent: exec.agentName,
+      agent: canonical,
       startedAt: exec.startedAt,
     });
     pipelineEvents.emit(jobId, "agent:complete", {
-      agent: exec.agentName,
+      agent: canonical,
       durationMs: exec.durationMs ?? 0,
       costUsd: exec.costUsd ?? 0,
       summary: `Restored from previous run`,
@@ -451,14 +462,14 @@ export async function resumePipeline(jobId: string): Promise<void> {
   try {
     // Resume from the appropriate point
     if (resumeFromIndex <= 0) {
-      // Agent 1: Document Extractor
+      // Agent 1: Source Adapter
       checkCancellation(jobId, cancelledRef);
       await updateStatus(jobId, "extracting", state);
       const ctx1 = createAgentContext(jobId, state, cancelledRef);
-      const extractResult = await documentExtractor.run(ctx1);
-      state.extractedDocument = extractResult.output;
+      const extractResult = await sourceAdapter.run(ctx1);
+      state.extractedSource = extractResult.output;
       db.update(jobs)
-        .set({ pageCount: extractResult.output.pageCount })
+        .set({ pageCount: extractResult.output.documentMetadata.pageCount })
         .where(eq(jobs.id, jobId))
         .run();
     }
@@ -469,7 +480,7 @@ export async function resumePipeline(jobId: string): Promise<void> {
       await updateStatus(jobId, "analyzing", state);
       const ctx2 = createAgentContext(jobId, state, cancelledRef);
       const visionResult = await runConfigAgent(visionAnalyzerConfig, ctx2);
-      state.pageExtractions = visionResult.output;
+      state.frameExtractions = visionResult.output;
     }
 
     if (resumeFromIndex <= 2) {

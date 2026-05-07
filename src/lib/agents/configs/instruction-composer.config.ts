@@ -34,16 +34,16 @@ export const instructionComposerConfig: AgentConfig<ComposedGuide> = {
   buildUserPrompt: buildInstructionComposerUserPrompt,
 
   validateInput(state) {
-    if (!state.pageExtractions) {
+    if (!state.frameExtractions) {
       throw new AgentValidationError(
         "instruction-composer",
-        "No page extractions available. Vision Analyzer must run first.",
+        "No frame extractions available. Vision Analyzer must run first.",
       );
     }
-    if (!state.pageExtractions.length) {
+    if (!state.frameExtractions.length) {
       throw new AgentValidationError(
         "instruction-composer",
-        "Page extractions array is empty.",
+        "Frame extractions array is empty.",
       );
     }
   },

@@ -12,8 +12,8 @@ import { pipelineEvents } from "@/lib/orchestrator/event-emitter";
 import { PipelineCancelledError } from "@/lib/agents/types";
 import type { PipelineStatus, AgentCostRecord } from "@/types/pipeline";
 import {
-  DEMO_EXTRACTED_DOCUMENT,
-  DEMO_PAGE_EXTRACTIONS,
+  DEMO_EXTRACTED_SOURCE,
+  DEMO_FRAME_EXTRACTIONS,
   DEMO_COMPOSED_GUIDE,
   DEMO_ENFORCED_GUIDE,
   DEMO_QUALITY_REVIEW,
@@ -45,15 +45,15 @@ export async function runDemoPipeline(jobId: string): Promise<void> {
   let totalCostUsd = 0;
 
   try {
-    // ── Agent 1: Document Extractor ────────────────────────
-    await simulateAgent(jobId, cancelledRef, "extracting", "document-extractor", costs, () => {
+    // ── Agent 1: Source Adapter ────────────────────────────
+    await simulateAgent(jobId, cancelledRef, "extracting", "source-adapter", costs, () => {
       totalCostUsd += 0;
       return [
         { progress: 30, message: "Extracting pages from PDF" },
         { progress: 70, message: "Converting pages to images" },
-        { progress: 100, message: `Extracted ${DEMO_EXTRACTED_DOCUMENT.pageCount} pages` },
+        { progress: 100, message: `Extracted ${DEMO_EXTRACTED_SOURCE.documentMetadata.pageCount} pages` },
       ];
-    }, 0, `Extracted ${DEMO_EXTRACTED_DOCUMENT.pageCount} pages`);
+    }, 0, `Extracted ${DEMO_EXTRACTED_SOURCE.documentMetadata.pageCount} pages`);
 
     // ── Agent 2: Vision Analyzer ───────────────────────────
     await simulateAgent(jobId, cancelledRef, "analyzing", "vision-analyzer", costs, () => {
@@ -64,7 +64,7 @@ export async function runDemoPipeline(jobId: string): Promise<void> {
         { progress: 75, message: "Analyzing page 3 of 4" },
         { progress: 100, message: "Analyzing page 4 of 4" },
       ];
-    }, 0.06, `Analyzed 4 pages, extracted ${DEMO_PAGE_EXTRACTIONS.reduce((sum, p) => sum + p.steps.length, 0)} observations`);
+    }, 0.06, `Analyzed 4 pages, extracted ${DEMO_FRAME_EXTRACTIONS.reduce((sum, p) => sum + p.steps.length, 0)} observations`);
 
     // ── Agent 3: Instruction Composer ──────────────────────
     await simulateAgent(jobId, cancelledRef, "composing", "instruction-composer", costs, () => {
@@ -379,7 +379,7 @@ function buildDemoXmlWorkInstruction(jobId: string): XmlWorkInstruction {
       sourceDocument: {
         filename: "demo-bookshelf.pdf",
         format: "pdf",
-        pageCount: DEMO_EXTRACTED_DOCUMENT.pageCount,
+        pageCount: DEMO_EXTRACTED_SOURCE.documentMetadata.pageCount,
       },
     },
     partsList: [...partsMap.values()],
@@ -536,7 +536,7 @@ async function simulateAgent(
 
 function getExecutionOrder(agent: string): number {
   const order: Record<string, number> = {
-    "document-extractor": 1,
+    "source-adapter": 1,
     "vision-analyzer": 2,
     "instruction-composer": 3,
     "guideline-enforcer": 4,
