@@ -64,6 +64,23 @@ export function PipelineMonitor({ jobId }: { jobId: string }) {
     }
   }, [state.status, fetchExecutions]);
 
+  // Re-fetch every time another agent transitions to "complete" so the
+  // detail drawer for finished agents has prompt/response while the
+  // pipeline is still running.
+  const completedCount = Object.values(state.agents).filter(
+    (a) => a.status === "complete",
+  ).length;
+  useEffect(() => {
+    if (completedCount > 0 && state.status === "running") {
+      fetchExecutions();
+    }
+  }, [completedCount, state.status, fetchExecutions]);
+
+  // Refresh on drawer open so the most recent prompt/response is shown.
+  useEffect(() => {
+    if (selectedAgentName) fetchExecutions();
+  }, [selectedAgentName, fetchExecutions]);
+
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;

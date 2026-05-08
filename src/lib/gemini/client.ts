@@ -14,28 +14,38 @@ import { calculateCost, getImageCost } from "./models";
 function safeJsonParse<T>(text: string): T {
   try {
     return JSON.parse(text) as T;
-  } catch {
-    // Repair common issues and retry
-    let repaired = text
-      // Remove trailing commas before } or ]
+  } catch (firstErr) {
+    // Repair common issues and retry. We avoid blanket apostrophe→quote
+    // replacement here: it corrupts otherwise-valid responses that include
+    // apostrophes inside string values (e.g. "Operator's left arm").
+    const repaired = text
       .replace(/,\s*([}\]])/g, "$1")
-      // Fix single-quoted strings → double-quoted (only outside existing double quotes)
-      .replace(/'/g, '"')
-      // Strip markdown code fences if present
       .replace(/^```(?:json)?\s*\n?/m, "")
       .replace(/\n?```\s*$/m, "");
 
     try {
       return JSON.parse(repaired) as T;
-    } catch {
-      // Try extracting JSON object/array from surrounding text
+    } catch (secondErr) {
       const match = repaired.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
       if (match) {
-        return JSON.parse(match[1]) as T;
+        try {
+          return JSON.parse(match[1]) as T;
+        } catch (thirdErr) {
+          console.error(
+            "[safeJsonParse] all 3 attempts failed. Raw response (first 1000 chars):\n%s",
+            text.slice(0, 1000),
+          );
+          throw new SyntaxError(
+            `Failed to parse JSON after repair (${(thirdErr as Error).message}). First 500 chars: ${text.slice(0, 500)}`,
+          );
+        }
       }
-      // Give up — throw with the original text for debugging
+      console.error(
+        "[safeJsonParse] no JSON object/array found in response. Raw (first 1000 chars):\n%s",
+        text.slice(0, 1000),
+      );
       throw new SyntaxError(
-        `Failed to parse JSON after repair. First 500 chars: ${text.slice(0, 500)}`
+        `Failed to parse JSON after repair (${(secondErr as Error).message}; first error: ${(firstErr as Error).message}). First 500 chars: ${text.slice(0, 500)}`,
       );
     }
   }
@@ -232,6 +242,15 @@ export async function generateTextWithVision(
     generationConfig,
   });
 
+  const finishReason = result.response.candidates?.[0]?.finishReason;
+  if (finishReason === "MAX_TOKENS") {
+    const { outputTokens: ot } = extractTokenCounts(result);
+    throw new Error(
+      `Response truncated (MAX_TOKENS): generated ${ot} output tokens. ` +
+        `Increase maxOutputTokens or reduce input size.`,
+    );
+  }
+
   const text = result.response.text();
   const { inputTokens, outputTokens } = extractTokenCounts(result);
   const costUsd = calculateCost(model, inputTokens, outputTokens);
@@ -290,6 +309,15 @@ export async function generateTextWithImages<T>(
     contents,
     generationConfig,
   });
+
+  const finishReason = result.response.candidates?.[0]?.finishReason;
+  if (finishReason === "MAX_TOKENS") {
+    const { outputTokens: ot } = extractTokenCounts(result);
+    throw new Error(
+      `Response truncated (MAX_TOKENS): generated ${ot} output tokens. ` +
+        `Increase maxOutputTokens or reduce input size.`,
+    );
+  }
 
   const text = result.response.text();
   const { inputTokens, outputTokens } = extractTokenCounts(result);

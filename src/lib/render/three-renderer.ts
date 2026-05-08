@@ -286,7 +286,12 @@ function rasterizeMesh(
 ): void {
   const positions = mesh.positions;
   const indices = mesh.indices;
-  const baseColor = mesh.color ?? defaultColorFor(mesh.componentId);
+  // mesh.color is documented as [0, 1] (per step-parser.ts), but the rest of
+  // the renderer works in 0-255. Scale here so colored STEP parts don't wash
+  // out to black after the lambert shade multiplier.
+  const baseColor: [number, number, number] = mesh.color
+    ? [mesh.color[0] * 255, mesh.color[1] * 255, mesh.color[2] * 255]
+    : defaultColorFor(mesh.componentId);
 
   // Project all vertices once.
   const vertexCount = positions.length / 3;

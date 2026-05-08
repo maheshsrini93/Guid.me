@@ -88,5 +88,20 @@ class PipelineEventEmitter {
   }
 }
 
-/** Singleton instance shared across the application */
-export const pipelineEvents = new PipelineEventEmitter();
+/**
+ * Singleton instance shared across the application.
+ *
+ * Stored on globalThis so it survives Next.js dev-mode hot-module reloads.
+ * Without this, HMR creates fresh module instances and the orchestrator
+ * emits to a different singleton than the SSE route is subscribed to —
+ * the page loads stale state from the DB on refresh but never receives
+ * live events.
+ */
+declare global {
+  // eslint-disable-next-line no-var
+  var __guid_pipelineEvents: PipelineEventEmitter | undefined;
+}
+
+export const pipelineEvents: PipelineEventEmitter =
+  globalThis.__guid_pipelineEvents ??
+  (globalThis.__guid_pipelineEvents = new PipelineEventEmitter());

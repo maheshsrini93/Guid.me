@@ -66,10 +66,21 @@ export function AgentCard({ agent, onClick }: { agent: AgentState; onClick: () =
             <span className="line-clamp-1 flex-1 pr-2 text-muted-foreground" title={agent.message}>
               {agent.message}
             </span>
-            {isActive && <span className="font-mono font-medium text-primary">{agent.progress}%</span>}
+            {isActive && agent.progress > 0 && (
+              <span className="font-mono font-medium text-primary">{agent.progress}%</span>
+            )}
           </div>
 
-          <Progress value={agent.progress} className={cn("h-1.5", isIdle && "opacity-30")} />
+          {isActive && agent.progress < 5 ? (
+            // Indeterminate: most agents are single Gemini calls with no
+            // granular progress, so show a sliding stripe instead of a
+            // zero-width bar that looks like nothing is happening.
+            <div className="h-1.5 w-full overflow-hidden bg-secondary">
+              <div className="h-full w-1/3 animate-indeterminate bg-primary" />
+            </div>
+          ) : (
+            <Progress value={agent.progress} className={cn("h-1.5", isIdle && "opacity-30")} />
+          )}
 
           <div className="flex items-center justify-between pt-1 text-xs font-medium">
             <span className={cn("text-muted-foreground", isComplete && "text-foreground")}>

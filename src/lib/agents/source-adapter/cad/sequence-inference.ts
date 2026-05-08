@@ -145,7 +145,7 @@ export async function inferSequence(
       { data: isoBuf, mimeType: "image/png" },
     ],
     responseSchema,
-    { temperature: 0.3, maxOutputTokens: 4096 },
+    { temperature: 0.3, maxOutputTokens: 32768 },
   );
 
   if (!("parsed" in result)) {

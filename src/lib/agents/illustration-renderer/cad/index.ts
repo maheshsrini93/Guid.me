@@ -19,7 +19,7 @@
  * acceptable to amortize across a multi-step render.
  */
 import path from "path";
-import { unlink, writeFile } from "fs/promises";
+import { mkdir, unlink, writeFile } from "fs/promises";
 import { loadImage } from "@napi-rs/canvas";
 import type {
   ExtractedSource,
@@ -79,6 +79,7 @@ class CadIllustrationRenderer implements IllustrationRendererImpl {
     const partsCatalog = parsed.partsCatalog;
 
     const illustrationsDir = getIllustrationsDir(jobId);
+    await mkdir(illustrationsDir, { recursive: true });
     const illustrations: GeneratedIllustration[] = [];
     const installedComponentIds = new Set<string>();
 
