@@ -2,8 +2,9 @@
 FROM node:22 AS builder
 WORKDIR /app
 
-# Enable pnpm via corepack
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Pin pnpm 10: package.json onlyBuiltDependencies permits the SQLite native build.
+# Avoid pnpm@latest silently changing install behavior on a redeploy.
+RUN corepack enable && corepack prepare pnpm@10.34.9 --activate
 
 # Install dependencies (cached layer)
 COPY package.json pnpm-lock.yaml ./
